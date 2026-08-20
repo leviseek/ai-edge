@@ -17,7 +17,8 @@ function main() {
   const outAt = args.indexOf('--out');
   const out = outAt >= 0 ? args[outAt + 1] : undefined;
   const serve = args.includes('--serve');
-  const port = Number(args[args.indexOf('--port') + 1] || 8787);
+  const portIdx = args.indexOf('--port');
+  const port = portIdx >= 0 ? Number(args[portIdx + 1] || 8787) : 8787;
 
   void scanProject(dir)
     .then((facts) => {
