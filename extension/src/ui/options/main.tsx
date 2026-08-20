@@ -115,7 +115,7 @@ function App() {
 
   return (
     <div className="opt-root">
-      <h1>ai-edge 设置</h1>
+      <h1>ai-edge 设置 <span className="muted">v{chrome.runtime.getManifest().version}</span></h1>
 
       {ping && health[ping.activeProviderId] && (
         <div

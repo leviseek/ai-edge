@@ -117,6 +117,7 @@ function App() {
     <div className="popup-root">
       <div className="statusbar" style={{ border: 'none', padding: 0 }}>
         <strong>ai-edge</strong>
+        <span className="badge">v{chrome.runtime.getManifest().version}</span>
         {ping ? <span className="badge">运行中</span> : <span className="badge muted">连接中…</span>}
         <span className="grow" />
         <span className="row">
