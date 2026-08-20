@@ -9,7 +9,8 @@
     "dev": "node scripts/build.mjs --watch",
     "typecheck": "tsc --noEmit",
     "smoke:summary": "esbuild scripts/m2-smoke.ts --bundle --platform=node --format=esm --outfile=.smoke/smoke.mjs && node .smoke/smoke.mjs",
-    "smoke:m3": "esbuild scripts/m3-smoke.ts --bundle --platform=node --format=esm --outfile=.smoke/smoke-m3.mjs && node .smoke/smoke-m3.mjs"
+    "smoke:m3": "esbuild scripts/m3-smoke.ts --bundle --platform=node --format=esm --outfile=.smoke/smoke-m3.mjs && node .smoke/smoke-m3.mjs",
+    "smoke:m4": "esbuild scripts/m4-smoke.ts --bundle --platform=node --format=esm --outfile=.smoke/smoke-m4.mjs && node .smoke/smoke-m4.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",

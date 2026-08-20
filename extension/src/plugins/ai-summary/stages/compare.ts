@@ -7,7 +7,7 @@ import { extractTextFromHtml } from '../../../core/extract/html-extractor';
 import { EdgeError, ErrorCodes } from '../../../base/errors';
 import { parseJsonLoose } from '../../../shared/protocol';
 import { SYSTEM_PROMPT, comparePrompt } from '../prompts';
-import type { SummaryFlow, ComparisonOutput, CompareCandidate } from '../types';
+import type { SummaryFlow, ComparisonOutput, ComparisonItem, CompareCandidate } from '../types';
 
 export interface CompareOptions {
   /** 每个查询召回条数 */
@@ -20,6 +20,10 @@ export interface CompareOptions {
   deepFetchMaxChars?: number;
   /** 深抓单页超时 ms */
   deepFetchTimeoutMs?: number;
+  /** 是否校验来源可及性（默认 true） */
+  verifySources?: boolean;
+  /** 单链接校验超时 ms */
+  verifyTimeoutMs?: number;
 }
 
 export class CompareStage implements Stage<SummaryFlow, SummaryFlow> {
@@ -95,6 +99,13 @@ export class CompareStage implements Stage<SummaryFlow, SummaryFlow> {
       items: [],
       recommendation: '',
     });
+    comparison.at = new Date().toISOString();
+
+    // 4) 来源可及性校验（404 打标；失败/越权静默标记 skip，不影响整体）
+    if (this.opts.verifySources !== false) {
+      await verifySources(comparison.items, this.opts.verifyTimeoutMs ?? 6000, ctx);
+    }
+
     return { ...flow, comparison, model: res.model };
   }
 
@@ -115,8 +126,7 @@ export class CompareStage implements Stage<SummaryFlow, SummaryFlow> {
 async function fetchPageText(
   url: string,
   opts: { timeoutMs: number; signal: AbortSignal; maxBytes?: number },
-): Promise<string> {
-  let u: URL;
+): Promise<string> {  let u: URL;
   try {
     u = new URL(url);
   } catch {
@@ -135,4 +145,53 @@ async function fetchPageText(
   const buf = await res.arrayBuffer();
   const bytes = buf.slice(0, opts.maxBytes ?? 300_000);
   return new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+}
+
+/** 来源可及性校验：HEAD 优先，GET 兜底；2xx 记 ok，其余记 fail，异常/越权记 skip */
+async function verifySources(
+  items: ComparisonItem[],
+  timeoutMs: number,
+  ctx: StageContext,
+): Promise<void> {
+  await Promise.all(
+    items
+      .slice(0, 12)
+      .map(async (it) => {
+        if (!it.url) {
+          it.verified = 'skip';
+          return;
+        }
+        try {
+          const u = new URL(it.url);
+          if (!/^https?:$/.test(u.protocol)) {
+            it.verified = 'skip';
+            return;
+          }
+          const res = await fetch(it.url, {
+            method: 'HEAD',
+            redirect: 'follow',
+            signal: AbortSignal.timeout(timeoutMs),
+            headers: { 'user-agent': 'Mozilla/5.0 (compatible; ai-edge-verify)' },
+          });
+          if (res.ok || res.redirected) it.verified = 'ok';
+          else it.verified = 'fail';
+        } catch {
+          try {
+            const res = await fetch(it.url, {
+              method: 'GET',
+              redirect: 'follow',
+              signal: AbortSignal.timeout(timeoutMs),
+              headers: { 'user-agent': 'Mozilla/5.0 (compatible; ai-edge-verify)' },
+            });
+            it.verified = res.ok ? 'ok' : 'fail';
+          } catch {
+            it.verified = 'skip';
+          }
+        }
+      }),
+  );
+  ctx.emit(
+    'compare',
+    `来源校验：${items.filter((i) => i.verified === 'ok').length} 可达 / ${items.filter((i) => i.verified === 'fail').length} 异常 / ${items.filter((i) => i.verified === 'skip').length} 未验证`,
+  );
 }

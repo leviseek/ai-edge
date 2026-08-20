@@ -49,6 +49,8 @@ export interface ComparisonItem {
   pros: string[];
   cons: string[];
   suitableFor: string;
+  /** 来源可及性校验：'ok' 可达 | 'fail' 404/不可达 | 'skip' 未验证 */
+  verified?: 'ok' | 'fail' | 'skip';
 }
 
 export interface ComparisonOutput {
@@ -56,6 +58,8 @@ export interface ComparisonOutput {
   category: string;
   items: ComparisonItem[];
   recommendation: string;
+  /** 生成时刻（ISO），用于时效性标注 */
+  at?: string;
 }
 
 export interface SummaryOutput extends SummaryCore {

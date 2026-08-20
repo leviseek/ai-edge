@@ -61,6 +61,14 @@ function registerBaseActions(): void {
 
   bus.register('base', 'get-settings', async () => settings.get());
 
+  bus.register('base', 'reset-settings', async () => {
+    const s = await settings.resetToDefaults();
+    ai.syncFromSettings(s.ai.providers);
+    search.syncFromSettings(s.search.services);
+    bus.postEvent('base:settings-changed', s);
+    return s;
+  });
+
   bus.register('base', 'update-settings', async (patch: Partial<BaseSettings>) => {
     await settings.patch(patch);
     ai.syncFromSettings(settings.get().ai.providers);

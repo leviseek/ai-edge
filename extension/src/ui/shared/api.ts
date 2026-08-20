@@ -23,6 +23,7 @@ export interface ProviderHealth {
 export const api = {
   ping: () => rpc<unknown, PingResult>('base', 'ping', {}),
   getSettings: () => rpc<unknown, BaseSettings>('base', 'get-settings', {}),
+  resetSettings: () => rpc<unknown, BaseSettings>('base', 'reset-settings', {}),
   updateSettings: (patch: Partial<BaseSettings>) =>
     rpc<Partial<BaseSettings>, BaseSettings>('base', 'update-settings', patch),
   setPluginEnabled: (id: string, enabled: boolean) =>

@@ -34,12 +34,15 @@
 
 **验收**：`npm run typecheck` 零错误；`npm run build` 通过；`npm run smoke:m3` 全绿（HTML 深抓提取 / fallback 降级与非降级路径 / 单提供商包装）；`npm run smoke:summary` 仍全绿。真机链路建议在 Edge 中对产品页启用四模式跑通三合一报告并核对来源可点、模型可追溯。
 
-## M4 — 体验与可信度打磨
+## M4 — 体验与可信度打磨 ✅
 
-- 结果渲染 Markdown（自研轻量渲染器，避免远程依赖）。
-- 可信度提示：LLM 输出免责声明、对比时效性标注、来源链接校验（404 打标）。
-- 页面内 FAB 快速总结卡（Shadow DOM）交互完善；设置页新增「数据与隐私」说明。
-- host_permissions 收敛：按已配置的 AI/搜索端点动态最小化。
+- [x] 结果渲染 Markdown：自研轻量渲染器（`markdown.ts` tokenizer 纯函数可测 + `markdown-render.tsx` React 视图），零远程依赖；支持标题/列表/引用/代码块/分隔线与行内加粗/斜体/代码/链接；崩溃修复：全局正则递归重入死循环、捕获组偏位。
+- [x] 可信度提示：免责声明常驻底部；对比结果嵌套生成时间「信息截至 …」；来源链接校验（HEAD→GET 兜底）为每个候选打 `✓ 可达 / ✗ 404 / · 未验证` 标记。
+- [x] Side Panel「结构化 / Markdown 报告」双视图切换；页面内 FAB 升级为**快速总结卡**（Shadow DOM：模式选择、RPC 总结、进度回显、复制 Markdown、侧栏详情），content 侧发起自动以当前标签为 tabId。
+- [x] 设置页新增「数据与隐私」面板：数据流说明、运行时网络授权（未授予则提示）、恢复默认设置（清除 Key）。
+- [x] **host_permissions 收敛**：移除 `<all_urls>` 安装期授权，改为 `optional_host_permissions`，联网（AI/搜索/深抓）在用户触发时经 `chrome.permissions.request` 运行时按需申请。
+
+**验收**：`npm run typecheck` 零错误；`npm run build` 通过；`npm run smoke:m4` 全绿（MD 块级/行内/引用与空行）；M2/M3 冒烟保持全绿。真机建议核对：FAB 卡快速总结、来源 ✓/✗ 标记、Markdown 报告渲染、首次联网授权弹窗。
 
 ## M5 — 预留插件落地
 

@@ -21,10 +21,14 @@ export function createAiSummaryPlugin(): EdgePlugin<PluginContext> {
         }),
       );
 
-      // RPC 路径：返回完整结果（非流式）
+      // RPC 路径：返回完整结果（非流式）；tabId 缺失时取发送方标签页
       disposers.push(
-        ctx.bus.register('plugin:ai-summary', 'summarize', async (req: SummaryRequest) => {
-          return runSummarize(ctx, req);
+        ctx.bus.register('plugin:ai-summary', 'summarize', async (req: SummaryRequest, sender) => {
+          const tabId = typeof req.tabId === 'number' ? req.tabId : sender.tab?.id;
+          if (typeof tabId !== 'number') {
+            throw new Error('无法确定目标标签页（请在页面/侧栏中发起）');
+          }
+          return runSummarize(ctx, { ...req, tabId });
         }),
       );
 

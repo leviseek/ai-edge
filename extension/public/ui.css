@@ -145,3 +145,26 @@ h3 { font-size: 13px; margin: 12px 0 6px; }
 .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .row > * { flex: 0 0 auto; }
 .grow { flex: 1 1 auto; }
+
+/* ---- Markdown 渲染 ---- */
+.md h1, .md h2, .md h3, .md h4 { margin: 10px 0 4px; line-height: 1.4; }
+.md h1 { font-size: 16px; } .md h2 { font-size: 15px; } .md h3 { font-size: 14px; }
+.md p { margin: 6px 0; }
+.md ul, .md ol { margin: 6px 0; padding-left: 20px; }
+.md code {
+  background: #eef2f7; border-radius: 4px; padding: 1px 5px;
+  font-family: Consolas, "Courier New", monospace; font-size: 12px;
+}
+.md pre { background: #f3f6fa; border: 1px solid var(--border); border-radius: 8px; padding: 10px; overflow-x: auto; }
+.md pre code { background: none; padding: 0; }
+.md blockquote {
+  margin: 8px 0; padding: 6px 12px; border-left: 3px solid var(--accent);
+  background: var(--accent-weak); border-radius: 0 6px 6px 0; color: var(--muted);
+}
+.md hr { border: none; border-top: 1px solid var(--border); margin: 10px 0; }
+.md a { color: var(--accent); }
+
+/* 来源校验标记 */
+.verified-ok { color: var(--ok); }
+.verified-fail { color: var(--danger); }
+.verified-skip { color: var(--muted); }

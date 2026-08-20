@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { useEffect, useState } from 'react';
 import type { BaseSettings, ProviderConfig, SearchConfig } from '../../base/settings';
 import { api, type PingResult, type ProviderHealth } from '../shared/api';
+import { hasNetworkPermission, ensureNetworkPermission } from '../shared/net-permission';
 
 function App() {
   const [settings, setSettings] = useState<BaseSettings | null>(null);
@@ -10,6 +11,7 @@ function App() {
   const [health, setHealth] = useState<Record<string, ProviderHealth>>({});
   const [saved, setSaved] = useState(false);
   const [err, setErr] = useState('');
+  const [netPerm, setNetPerm] = useState(true);
 
   useEffect(() => {
     void Promise.all([api.getSettings(), api.ping()])
@@ -22,6 +24,11 @@ function App() {
         setHealth((m) => ({ ...m, [pid]: h }));
       })
       .catch((e) => setErr(String(e)));
+  }, []);
+
+  // 展示当前网络授权状态（不自动弹窗）
+  useEffect(() => {
+    void hasNetworkPermission().then(setNetPerm).catch(() => undefined);
   }, []);
 
   if (!settings) return <div className="opt-root"><div className="err">{err || '加载中…'}</div></div>;
@@ -53,8 +60,32 @@ function App() {
   };
 
   const check = async (providerId: string) => {
+    const granted = await ensureNetworkPermission();
+    setNetPerm(granted);
+    if (!granted) {
+      setHealth((m) => ({ ...m, [providerId]: { providerId, ok: false, message: '未授予网络权限（请点击“允许联网”）' } }));
+      return;
+    }
     const h = await api.healthCheckProvider(providerId);
     setHealth((m) => ({ ...m, [providerId]: h }));
+  };
+
+  const grantNet = async () => {
+    const ok = await ensureNetworkPermission();
+    setNetPerm(ok);
+  };
+
+  const reset = async () => {
+    if (!window.confirm('确定恢复默认设置并清除已保存的 API Key 吗？')) return;
+    setErr('');
+    try {
+      const s = await api.resetSettings();
+      setSettings(s);
+      setHealth({});
+      setPing(await api.ping());
+    } catch (e) {
+      setErr(String(e));
+    }
   };
 
   const togglePlugin = async (id: string, enabled: boolean) => {
@@ -169,6 +200,25 @@ function App() {
             </div>
           );
         })}
+      </div>
+
+      <div className="panel">
+        <h2>数据与隐私</h2>
+        <ul style={{ margin: '6px 0 10px', paddingLeft: 20 }}>
+          <li>API Key 仅保存在本机扩展存储（chrome.storage.local），只由后台 Service Worker 读取，Content 脚本永远接触不到。</li>
+          <li>使用「AI 总结」时，当前页面提取的正文会发送给你自选的 AI 提供商；「同品类比较」会额外把查询发给配置的搜索服务，并对候选页发起抓取。</li>
+          <li>无任何遥测/统计上报；所有历史仅存在于本机与对应 AI/搜索服务间。</li>
+        </ul>
+        <div className="row">
+          <span className="grow">
+            网络访问权限：<span className={netPerm ? 'ok' : 'err'}>{netPerm ? '已授予' : '未授予'}</span>
+            <span className="muted">（用于 AI / 搜索 / 候选深抓，按需在运行时申请）</span>
+          </span>
+          <button onClick={() => void grantNet()}>{netPerm ? '重新确认' : '允许联网'}</button>
+        </div>
+        <div className="row" style={{ marginTop: 8 }}>
+          <button style={{ color: 'var(--danger)' }} onClick={() => void reset()}>恢复默认设置（清除 Key）</button>
+        </div>
       </div>
 
       <div className="row">

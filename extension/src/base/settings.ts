@@ -124,6 +124,14 @@ export class SettingsStore {
     await this.persist();
   }
 
+  /** 恢复默认设置（清空本地配置） */
+  async resetToDefaults(): Promise<BaseSettings> {
+    this.cache = structuredClone(DEFAULT_SETTINGS);
+    await chrome.storage.local.remove(STORAGE_KEY);
+    this.emit();
+    return this.cache;
+  }
+
   onChange(fn: (s: BaseSettings) => void): () => void {
     this.listeners.add(fn);
     return () => this.listeners.delete(fn);
