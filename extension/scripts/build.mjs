@@ -1,6 +1,6 @@
 // ai-edge 构建脚本：esbuild 多入口打包（SW/content/UI → IIFE），public → dist，自动生成图标。
 import { build, context } from 'esbuild';
-import { cpSync, mkdirSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -78,10 +78,12 @@ function copyPublic() {
   mkdirSync(dist, { recursive: true });
   cpSync(join(root, 'public'), dist, { recursive: true });
   mkdirSync(join(dist, 'icons'), { recursive: true });
-  writeFileSync(join(dist, 'icons/icon16.png'), makePng(16, [31, 99, 255]));
-  writeFileSync(join(dist, 'icons/icon48.png'), makePng(48, [31, 99, 255]));
-  writeFileSync(join(dist, 'icons/icon128.png'), makePng(128, [31, 99, 255]));
-  console.log('[build] public/ → dist/ (icons generated)');
+  // 真实图标已放于 public/icons（manifest 引用 16/32/48/128）；缺失时才生成纯色占位
+  for (const size of [16, 48, 128]) {
+    const target = join(dist, 'icons', `icon${size}.png`);
+    if (!existsSync(target)) writeFileSync(target, makePng(size, [31, 99, 255]));
+  }
+  console.log('[build] public/ → dist/');
 }
 
 const copyPlugin = {
