@@ -14,6 +14,7 @@ export function ResourcePanel() {
   const [aiReason, setAiReason] = useState('');
   const [dlMsg, setDlMsg] = useState('');
   const [err, setErr] = useState('');
+  const [copiedUrl, setCopiedUrl] = useState('');
 
   const scan = async () => {
     const [t] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -81,6 +82,18 @@ export function ResourcePanel() {
 
   const netSize = (list: ResourceInfo[]): number => list.reduce((s, r) => s + r.size, 0);
 
+  const copyUrl = async (url: string) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedUrl(url);
+      setTimeout(() => setCopiedUrl(''), 1200);
+    } catch {
+      /* noop */
+    }
+  };
+
+  const hasStream = shown.some((r) => r.category === '视频流');
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -127,6 +140,11 @@ export function ResourcePanel() {
             ))}
           </div>
           <div className="res-list panel">
+            {hasStream && (
+              <div className="muted" style={{ padding: 4, background: '#fff8e6', borderRadius: 6, marginBottom: 4 }}>
+                ⚠️ 检测到 HLS/MSE 视频流（m3u8/m4s/ts）。此地址为分片索引，如需整条视频请用 ffmpeg / N_m3u8DL-RE 等工具合并下载；可点「📋」复制播放列表 URL。
+              </div>
+            )}
             {shown.length ? (
               shown.map((r) => (
                 <div className="res-item" key={r.url}>
@@ -134,6 +152,9 @@ export function ResourcePanel() {
                   <span className="grow res-name" title={r.url}>{r.name}</span>
                   <span className="muted res-size">{formatSize(r.size)}</span>
                   <span className="badge">{r.category}</span>
+                  <button style={{ padding: '1px 6px', fontSize: 11 }} onClick={() => void copyUrl(r.url)}>
+                    {copiedUrl === r.url ? '✓' : '📋'}
+                  </button>
                 </div>
               ))
             ) : (

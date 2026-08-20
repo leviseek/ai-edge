@@ -6,7 +6,8 @@ import { buildProviderChain } from '../../core/ai/resolve-chain';
 import { parseJsonLoose } from '../../shared/protocol';
 import { RESOURCE_MANIFEST } from './manifest';
 import { classifyResource } from './classify';
-import type { ResourceInfo, RawResource, DownloadStatus, AiFilterResult } from './types';
+import { resourceKey, type RawResource } from '../../core/extract/resources';
+import type { ResourceInfo, DownloadStatus, AiFilterResult } from './types';
 
 const FILTER_SYSTEM =
   '你是资源筛选器。仅从给出的资源列表中挑出“符合用户需求”的条目，不要编造列表中不存在的 URL。输出严格 JSON：{"selected": ["确切匹配的 url"], "reason": "80字内理由"}';
@@ -20,8 +21,41 @@ function basename(url: string): string {
   }
 }
 
+async function listRawResources(ctx: PluginContext, tabId: number): Promise<RawResource[]> {
+  // B 站等播放器在 iframe 中，逐 frame 汇总（受限 frame 静默跳过）
+  let frames: chrome.webNavigation.GetAllFrameResultDetails[] | null = null;
+  try {
+    frames = await chrome.webNavigation.getAllFrames({ tabId });
+  } catch {
+    frames = null;
+  }
+  const targets = frames && frames.length ? frames.filter((f) => !f.errorOccurred) : [{ frameId: 0 }];
+  const out: RawResource[] = [];
+  const seen = new Set<string>();
+  for (const f of targets) {
+    try {
+      const raw = await ctx.tabs.sendFrame<{ tabId: number }, RawResource[]>(
+        tabId,
+        f.frameId,
+        'content:main',
+        'resources',
+        { tabId },
+      );
+      for (const r of raw) {
+        const key = resourceKey(r);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push(r);
+      }
+    } catch {
+      /* 该 frame 未注入 content 或受限页 */
+    }
+  }
+  return out;
+}
+
 async function listResources(ctx: PluginContext, tabId: number): Promise<ResourceInfo[]> {
-  const raw = await ctx.tabs.send<{ tabId: number }, RawResource[]>(tabId, 'content:main', 'resources', { tabId });
+  const raw = await listRawResources(ctx, tabId);
   return raw
     .map((r) => ({ ...r, category: classifyResource(r) }))
     .sort((a, b) => b.size - a.size);

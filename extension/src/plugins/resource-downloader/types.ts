@@ -1,5 +1,15 @@
 /** 资源下载器：共享类型 */
-export type ResourceCategory = '图片' | '视频' | '音频' | '文档' | '字体' | '样式' | '脚本' | '数据接口' | '其他';
+export type ResourceCategory =
+  | '图片'
+  | '视频'
+  | '视频流'
+  | '音频'
+  | '文档'
+  | '字体'
+  | '样式'
+  | '脚本'
+  | '数据接口'
+  | '其他';
 
 export interface RawResource {
   url: string;

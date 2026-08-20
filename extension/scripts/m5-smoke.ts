@@ -6,6 +6,7 @@ import { classifyResource, formatSize } from '../src/plugins/resource-downloader
 import { encodeWav } from '../src/core/asr/wav';
 import { formatTimecode, segmentsToSrt, srtToVtt } from '../src/plugins/video-subtitle/format';
 import type { SubtitleSegment } from '../src/plugins/video-subtitle/types';
+import { resourceKey, collectResources } from '../src/core/extract/resources';
 
 function assert(cond: boolean, msg: string): void {
   if (!cond) throw new Error(`✗ ${msg}`);
@@ -56,6 +57,42 @@ async function main(): Promise<void> {
     assert(srt.includes('2\n00:00:03,000 --> 00:00:04,000\n世界'), 'SRT 第 2 条');
     const vtt = srtToVtt(srt);
     assert(vtt.startsWith('WEBVTT') && !vtt.includes(',000 -->'), 'VTT 头 + 逗号转点');
+  }
+
+  console.log('\n[场景5] HLS/MSE 视频流分类');
+  {
+    assert(classifyResource({ url: 'https://a.com/v.m3u8?sign=1', type: 'fetch' }) === '视频流', 'm3u8 播放列表 → 视频流');
+    assert(classifyResource({ url: 'https://a.com/video.m4s?r=1', type: 'fetch' }) === '视频流', 'm4s 分片 → 视频流');
+    assert(classifyResource({ url: 'https://a.com/s/seg.ts?r=1', type: 'media' }) === '视频流', '.ts 分片 → 视频流');
+    assert(classifyResource({ url: 'https://a.com/movie.mp4?x=1', type: 'media' }) === '视频', 'mp4 仍为 视频');
+  }
+
+  console.log('\n[场景6] 去重：视频流按完整 URL（token）保留，普通资源按去 query 去重');
+  {
+    const fakeEntries = [
+      { name: 'https://a.com/v.m3u8?token=1', startTime: 1, transferSize: 100, duration: 1, initiatorType: 'fetch' },
+      { name: 'https://a.com/v.m3u8?token=2', startTime: 2, transferSize: 101, duration: 1, initiatorType: 'fetch' },
+      { name: 'https://a.com/img/a.png?v=1', startTime: 3, transferSize: 50, duration: 1, initiatorType: 'img' },
+      { name: 'https://a.com/img/a.png?v=2', startTime: 4, transferSize: 51, duration: 1, initiatorType: 'img' },
+      { name: 'data:image/png;base64,xxx', startTime: 5, transferSize: 0, duration: 0, initiatorType: 'css' },
+    ] as unknown as PerformanceResourceTiming[];
+    const orig = globalThis.performance;
+    (globalThis as unknown as { performance: Performance }).performance = {
+      getEntriesByType: (t: string) => (t === 'resource' ? (fakeEntries as unknown as PerformanceResourceTiming[]) : []),
+    } as Performance;
+    const list = collectResources();
+    (globalThis as unknown as { performance: Performance }).performance = orig;
+    assert(list.length === 3, `流+图共 3 条（实际 ${list.length}）`);
+    assert(list.filter((r) => r.url.includes('m3u8')).length === 2, '两条不同 token 的 m3u8 均保留');
+    assert(list.filter((r) => r.url.includes('a.png')).length === 1, 'png 不同 query 去重为一条');
+    assert(
+      resourceKey({ url: 'https://a.com/v.m4s?t=1', normalized: 'https://a.com/v.m4s' }) === 'https://a.com/v.m4s?t=1',
+      '流传键=完整 URL',
+    );
+    assert(
+      resourceKey({ url: 'https://a.com/i.png?x=1', normalized: 'https://a.com/i.png' }) === 'https://a.com/i.png',
+      '普通资源键=去 query',
+    );
   }
 
   console.log('\nM5 冒烟测试全部通过 ✅');

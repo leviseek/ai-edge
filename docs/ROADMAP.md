@@ -48,7 +48,7 @@
 
 | 插件 | 状态 | 落地内容 |
 | --- | --- | --- |
-| `resource-downloader` | ✅ 完整 | Performance-API 采集（`resources`）、9 类分类、AI 语义筛选（LLM 选中列表回传）、`chrome.downloads` 批量下载；Popup「资源下载」页签（扫描/筛选/多选/下载）；`smoke:m5` 覆盖分类/WAV/SRT |
+| `resource-downloader` | ✅ 完整 | Performance-API 采集（`resources`），**逐 frame 汇总**（`all_frames` 注入 + `webNavigation.getAllFrames`，覆盖 B 站播放器 iframe），9 类分类（含 **HLS/MSE 视频流** m3u8/m4s/ts，按完整 URL 保留多清晰度分片），AI 语义筛选，`chrome.downloads` 批量下载；Popup「资源下载」页签 + Side Panel「资源下载」页（扫描/筛选/多选/复制 URL/下载）；`smoke:m5` 覆盖分类/去重/WAV/SRT |
 | `video-subtitle` | 🔶 骨架 | 基座能力 `ctx.media`（Offscreen 音频解码为 16kHz PCM）+ `ctx.asr`（ASRProvider 抽象 + OpenAI Whisper 适配器 + settings.asr）；插件 action：`list-videos` / `transcribe-uri`（URL 音频→SRT，核心链路可用）/ `inject-vtt`（content 注入原生字幕轨）/ `status`；`smoke:m5` 覆盖 WAV/SRT/VTT |
 | `video-subtitle` 二期 | ⏳ | 页面 `<video>` 音频捕获（`captureStream`→MediaRecorder→Blob→decodeAudio→ASR）、字幕 UI 与设置面板、`tabCapture` 兜底评估 |
 

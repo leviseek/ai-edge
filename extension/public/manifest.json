@@ -5,7 +5,7 @@
   "version": "0.2.0",
   "description": "Edge 浏览器插件基座：可插拔 AI 功能模块。当前：AI 页面总结（摘要 / 可行性 / 优缺点 / 同品类横向对比）。预留：资源下载、视频字幕。",
   "minimum_chrome_version": "110",
-  "permissions": ["storage", "activeTab", "scripting", "sidePanel", "contextMenus", "tabs", "permissions", "downloads"],
+  "permissions": ["storage", "activeTab", "scripting", "sidePanel", "contextMenus", "tabs", "permissions", "downloads", "webNavigation"],
   "optional_host_permissions": ["http://*/*", "https://*/*"],
   "background": {
     "service_worker": "background.js"
@@ -15,7 +15,8 @@
       "matches": ["<all_urls>"],
       "js": ["content.js"],
       "run_at": "document_idle",
-      "all_frames": false
+      "all_frames": true,
+      "match_about_blank": true
     }
   ],
   "action": {

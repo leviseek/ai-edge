@@ -47,6 +47,27 @@ export class TabMessenger {
     return res.data as TRes;
   }
 
+  /** 向指定 tab 的指定 frame（iframe）发送消息（无自动注入） */
+  async sendFrame<TReq = unknown, TRes = unknown>(
+    tabId: number,
+    frameId: number,
+    target: string,
+    action: string,
+    payload: TReq,
+  ): Promise<TRes> {
+    let res: ResponseEnvelope<TRes> | undefined;
+    try {
+      res = (await chrome.tabs.sendMessage(tabId, makeRequest(target, action, payload), { frameId })) as
+        | ResponseEnvelope<TRes>
+        | undefined;
+    } catch (e) {
+      throw new RpcError('no_content_script', `frame ${frameId} 无内容脚本响应：${e instanceof Error ? e.message : String(e)}`);
+    }
+    if (!res) throw new RpcError('no_response', 'content script 无响应');
+    if (!res.ok) throw new RpcError(res.error?.code ?? 'unknown', res.error?.message ?? 'content 调用失败');
+    return res.data as TRes;
+  }
+
   /** 向已打开标签注入 content.js（幂等；受限页/无权限会抛错） */
   private async injectContentScript(tabId: number): Promise<void> {
     try {
