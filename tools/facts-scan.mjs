@@ -3,6 +3,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, basename } from 'node:path';
 import { createServer } from 'node:http';
+import { pathToFileURL } from 'node:url';
 import { scanProject } from './facts-scan-lib.mjs';
 
 function main() {
@@ -45,5 +46,5 @@ function main() {
     });
 }
 
-// 仅作为 CLI 直接运行（.mjs 入口）时执行 main；被库/测试 import 时不触发
-if (import.meta.url.endsWith('/tools/facts-scan.mjs')) main();
+// 仅作为 CLI 直接运行（主脚本）时执行 main；被库/测试 import 时不触发
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main();

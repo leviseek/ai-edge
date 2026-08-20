@@ -4,6 +4,7 @@
  */
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join, extname, basename, relative, isAbsolute, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 export const DEFAULT_SECTIONS = {
   已实现: ['已实现', '已完成', '功能特性', 'Features', 'What', 'done', '目前支持'],
@@ -190,4 +191,14 @@ export async function scanProject(dir, cfg = {}) {
     byKey.set(k, { ...f, updatedAt: Date.now() });
   }
   return [...byKey.values()];
+}
+
+// 被误当作 CLI 直接执行时给出指引
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  console.error(
+    '✗ 这是 facts-scan 的【核心库】，没有 CLI 入口。\n' +
+      '   请执行 CLI：  node tools/facts-scan.mjs <项目目录> --serve\n' +
+      '   或看帮助：    node tools/facts-scan.mjs',
+  );
+  process.exit(1);
 }
