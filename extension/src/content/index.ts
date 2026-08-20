@@ -8,30 +8,40 @@ import type { SummaryOutput, SummaryMode, ProgressEvent } from '../plugins/ai-su
 
 const CONTENT_TARGET = 'content:main';
 
-chrome.runtime.onMessage.addListener((msg: Envelope, _sender, sendResponse) => {
-  if (!isRequest(msg)) return false;
-  if (msg.target !== CONTENT_TARGET) return false;
+// 哨兵：TabMessenger 可能在页面加载后再注入一次 content.js（executeScript），
+// 重复副本不得再次注册监听/注入 UI，避免重复应答与重复 FAB。
+const injected = globalThis as unknown as { __AI_EDGE_CONTENT_INJECTED__?: boolean };
+if (!injected.__AI_EDGE_CONTENT_INJECTED__) {
+  injected.__AI_EDGE_CONTENT_INJECTED__ = true;
+  main();
+}
 
-  switch (msg.action) {
-    case 'extract':
-      try {
-        sendResponse(okResponse(msg, extractPage()));
-      } catch (e) {
-        sendResponse(errResponse(msg, toErrorCode(e), e instanceof Error ? e.message : String(e)));
-      }
-      return true;
-    case 'ping':
-      sendResponse(okResponse(msg, { ok: true }));
-      return true;
-    default:
-      sendResponse(errResponse(msg, 'not_found', `content 未注册 action: ${msg.action}`));
-      return true;
+function main(): void {
+  chrome.runtime.onMessage.addListener((msg: Envelope, _sender, sendResponse) => {
+    if (!isRequest(msg)) return false;
+    if (msg.target !== CONTENT_TARGET) return false;
+
+    switch (msg.action) {
+      case 'extract':
+        try {
+          sendResponse(okResponse(msg, extractPage()));
+        } catch (e) {
+          sendResponse(errResponse(msg, toErrorCode(e), e instanceof Error ? e.message : String(e)));
+        }
+        return true;
+      case 'ping':
+        sendResponse(okResponse(msg, { ok: true }));
+        return true;
+      default:
+        sendResponse(errResponse(msg, 'not_found', `content 未注册 action: ${msg.action}`));
+        return true;
+    }
+  });
+
+  // 悬浮入口：仅顶层文档注入一次
+  if (window.top === window) {
+    initFloatingCard();
   }
-});
-
-// 悬浮入口：仅顶层文档注入一次
-if (window.top === window) {
-  initFloatingCard();
 }
 
 const QUICK_MODES: { id: SummaryMode; label: string }[] = [

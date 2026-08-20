@@ -203,7 +203,7 @@ function App() {
     setTimeout(() => setCopied(''), 1500);
   };
 
-  const needConfig = /(API Key|未配置|无法连接|鉴权|Base|设置页)/.test(err);
+  const needConfig = /(API Key|未配置|无法连接|鉴权|Base|设置页|注入|受限|权限|刷新)/.test(err);
 
   return (
     <div className="sp-root">
