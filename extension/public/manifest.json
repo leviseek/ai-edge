@@ -1,0 +1,39 @@
+{
+  "manifest_version": 3,
+  "name": "ai-edge 基座",
+  "short_name": "ai-edge",
+  "version": "0.1.0",
+  "description": "Edge 浏览器插件基座：可插拔 AI 功能模块。当前：AI 页面总结（摘要 / 可行性 / 优缺点 / 同品类横向对比）。预留：资源下载、视频字幕。",
+  "minimum_chrome_version": "110",
+  "permissions": ["storage", "activeTab", "scripting", "sidePanel", "contextMenus", "tabs"],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "ai-edge",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "options_page": "options.html",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

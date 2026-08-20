@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "AI 总结：增强流水线",
+    "output": "ai-summary-pipeline.html",
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "viewBox": [1400, 820]
+  },
+  "participants": [
+    { "id": "sidepanel", "type": "frontend", "label": "Side Panel", "sublabel": "模式选择 + 结果" },
+    { "id": "sw", "type": "backend", "label": "SW · ai-summary", "sublabel": "base + pipeline" },
+    { "id": "content", "type": "frontend", "label": "Content Script", "sublabel": "页面上下文" },
+    { "id": "provider", "type": "cloud", "label": "LLM Provider", "sublabel": "chat / chatStream" },
+    { "id": "search", "type": "external", "label": "搜索服务", "sublabel": "Tavily / SearXNG" }
+  ],
+  "segments": [
+    { "from": 165, "to": 315, "label": "提取正文" },
+    { "from": 350, "to": 525, "label": "分类 · 核心摘要" },
+    { "from": 560, "to": 740, "label": "增强模式（可行性/优缺点/比较）" }
+  ],
+  "messages": [
+    { "from": "sidepanel", "to": "sw", "y": 200, "label": "summarize(tabId, modes)", "variant": "emphasis", "note": "Envelope{target:'plugin:ai-summary', action:'summarize'}" },
+    { "from": "sw", "to": "content", "y": 250, "label": "extract 请求", "variant": "emphasis" },
+    { "from": "content", "to": "sw", "y": 295, "label": "ExtractionResult：标题/正文/统计", "variant": "return" },
+    { "from": "sw", "to": "provider", "y": 380, "label": "classify（结构化JSON）" },
+    { "from": "provider", "to": "sw", "y": 425, "label": "pageType/entity/关键词", "variant": "return" },
+    { "from": "sw", "to": "provider", "y": 480, "label": "summarize 核心摘要", "variant": "emphasis" },
+    { "from": "provider", "to": "sw", "y": 514, "label": "SummaryCore", "variant": "return" },
+    { "from": "sw", "to": "search", "y": 605, "label": "search(entity + 关键词)", "variant": "dashed" },
+    { "from": "search", "to": "sw", "y": 650, "label": "SearchResult[]（含来源URL）", "variant": "return" },
+    { "from": "sw", "to": "provider", "y": 695, "label": "compare：横向对比表", "variant": "emphasis" },
+    { "from": "provider", "to": "sw", "y": 725, "label": "ComparisonOutput", "variant": "return" },
+    { "from": "sw", "to": "sidepanel", "y": 732, "label": "SummaryOutput + 阶段进度事件", "variant": "emphasis" }
+  ],
+  "activations": [
+    { "participant": "sw", "from": 195, "to": 810, "type": "backend" },
+    { "participant": "content", "from": 245, "to": 300, "type": "frontend" },
+    { "participant": "provider", "from": 375, "to": 730, "type": "cloud" },
+    { "participant": "search", "from": 600, "to": 655, "type": "external" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "多阶段流水线", "items": ["extract → classify → summarize 逐阶段产出结构化数据", "每阶段可独立替换/中止（AbortController）", "整个流程在 SW 侧经 Pipeline 编排"] },
+    { "dot": "emerald", "title": "增强模式组合", "items": ["feasibility / pros-cons / compare 按需加入流水线", "compare 先召回网络候选再 LLM 综合", "输出含来源链接与备注，避免编造"] },
+    { "dot": "amber", "title": "全程可观测", "items": ["阶段进度事件实时推送到 UI", "LLM 输出以结构化 JSON 容错解析", "异常以代码化错误（provider_error 等）返回"] }
+  ]
+}

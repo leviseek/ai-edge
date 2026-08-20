@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "diagram_type": "lifecycle",
+  "meta": {
+    "title": "插件生命周期 (Plugin Lifecycle)",
+    "output": "plugin-lifecycle.html",
+    "quality_profile": "showcase",
+    "viewBox": [1140, 640]
+  },
+  "lanes": [
+    { "id": "main", "label": "激活路径" },
+    { "id": "ops", "label": "停用与故障" }
+  ],
+  "states": [
+    { "id": "registered", "type": "start", "label": "registered", "sublabel": "清单已注册", "lane": "main", "col": 0, "step": "01", "tag": "待启用" },
+    { "id": "activating", "type": "active", "label": "activating", "sublabel": "create + activate(ctx)", "lane": "main", "col": 1, "step": "02", "tag": "加载中" },
+    { "id": "active", "type": "success", "label": "active", "sublabel": "action 已注册可调用", "lane": "main", "col": 2, "step": "03", "tag": "运行中" },
+    { "id": "deactivating", "type": "active", "label": "deactivating", "sublabel": "deactivate 清理副作用", "lane": "ops", "col": 1, "tag": "收敛" },
+    { "id": "inactive", "type": "waiting", "label": "inactive", "sublabel": "已停用 · 可再启用", "lane": "ops", "col": 2, "tag": "可复入" },
+    { "id": "error", "type": "failure", "label": "error", "sublabel": "激活/运行异常 · 隔离", "lane": "ops", "col": 0, "tag": "可恢复" }
+  ],
+  "transitions": [
+    { "from": "activating", "to": "error", "label": "activate 抛错", "variant": "security", "labelAt": [415, 248] },
+    { "from": "active", "to": "deactivating", "label": "禁用 / 停用", "variant": "security", "labelAt": [496, 250] },
+    { "from": "inactive", "to": "activating", "label": "再次启用", "variant": "dashed", "route": "bottom-channel" },
+    { "from": "error", "to": "activating", "label": "修复后重试", "variant": "dashed", "labelAt": [150, 222] }
+  ],
+  "cards": [
+    { "dot": "emerald", "title": "正常路径", "items": ["registered → activating → active 单向前进", "停用 → deactivating → inactive → 可再启用", "activate 内所有副作用必须可逆"] },
+    { "dot": "rose", "title": "故障隔离", "items": ["activate 抛错仅把该插件置 error", "不影响其它插件与基座运行", "错误信息登记于清单供诊断"] },
+    { "dot": "cyan", "title": "可恢复", "items": ["修复后从 error 重新 enable/激活", "依赖按 dependsOn 拓扑排序启动", "启用清单持久化在 BaseSettings"] }
+  ]
+}

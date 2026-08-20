@@ -1,0 +1,13 @@
+# 依赖与构建产物
+node_modules/
+dist/
+*.tgz
+
+# pnpm 封装产物（本工程以 npm 为准，pnpm 文件为环境无意生成）
+pnpm-lock.yaml
+pnpm-workspace.yaml
+
+# archify 可再生证据（diagrams 内 HTML/JSON spec 保留，截图/回执可重新生成）
+*.visual-check.*
+
+.DS_Store

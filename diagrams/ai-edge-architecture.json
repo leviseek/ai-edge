@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "ai-edge 基座运行时架构",
+    "output": "ai-edge-architecture.html",
+    "quality_profile": "showcase",
+    "viewBox": [1260, 700]
+  },
+  "components": [
+    { "id": "page", "type": "external", "label": "网页 DOM", "sublabel": "被总结的页面", "tag": "tab", "pos": [60, 140], "size": [150, 72] },
+    { "id": "content", "type": "frontend", "label": "Content Script", "sublabel": "提取正文 · 注入悬浮UI", "tag": "content.js", "pos": [60, 430], "size": [150, 84] },
+    { "id": "core", "type": "backend", "label": "核心模组", "sublabel": "AI/搜索抽象 · 提取 · 流水线", "pos": [360, 140], "size": [210, 72] },
+    { "id": "summary", "type": "backend", "label": "ai-summary 插件", "sublabel": "总结/可行性/优缺点/比较", "tag": "首个功能", "pos": [360, 255], "size": [210, 72] },
+    { "id": "basecore", "type": "backend", "label": "基座模块", "sublabel": "registry · bus · settings · logger", "pos": [360, 370], "size": [210, 72] },
+    { "id": "ui", "type": "frontend", "label": "UI 面板", "sublabel": "Side Panel · Popup · Options", "pos": [360, 565], "size": [210, 68] },
+    { "id": "provider", "type": "external", "label": "LLM 提供商", "sublabel": "OpenAI-compatible", "tag": "DeepSeek / Qwen / Ollama / 网关", "pos": [990, 170], "size": [190, 84] },
+    { "id": "search", "type": "external", "label": "搜索服务", "sublabel": "Tavily · SearXNG", "tag": "同品类比较召回", "pos": [990, 410], "size": [190, 84] }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "Edge 浏览器 · 扩展 (MV3)", "wraps": ["content", "core", "summary", "basecore", "ui"] },
+    { "kind": "security-group", "label": "Service Worker 上下文 (background.js)", "wraps": ["core", "summary", "basecore"] }
+  ],
+  "connections": [
+    { "id": "page-content", "from": "page", "to": "content", "label": "读取 DOM / 注入悬浮UI", "fromSide": "bottom", "toSide": "top", "labelAt": [135, 226] },
+    { "id": "summary-content", "from": "summary", "to": "content", "label": "extract 请求/结果 (tabs.sendMessage)", "variant": "dashed", "fromSide": "left", "toSide": "right", "labelAt": [286, 528] },
+    { "id": "ui-base", "from": "ui", "to": "basecore", "label": "Envelope 请求 / 事件 (client→SW)", "variant": "emphasis", "fromSide": "top", "toSide": "bottom" },
+    { "id": "basecore-summary", "from": "basecore", "to": "summary", "label": "bus 路由 → plugin:ai-summary", "fromSide": "top", "toSide": "bottom" },
+    { "id": "summary-provider", "from": "summary", "to": "provider", "label": "chat / chatStream (仅SW外发)", "variant": "emphasis", "fromSide": "right", "toSide": "left" },
+    { "id": "summary-search", "from": "summary", "to": "search", "label": "search() · 同品类召回", "variant": "dashed", "fromSide": "right", "toSide": "left" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "基座能力面", "items": ["注册表 route 插件 action 命名空间 plugin:<id>", "统一 Envelope 协议 + MessageBus 路由", "AI/搜索供应商可插拔（适配器模式）"] },
+    { "dot": "emerald", "title": "SW 唯一网络入口", "items": ["LLM 与搜索请求只从 Service Worker 发出", "UI 经 action 调用，content 上报数据", "流式 token 与进度经事件通道推送"] },
+    { "dot": "rose", "title": "安全边界", "items": ["API Key 仅存 SW 侧存储，Content 永不可见", "插件激活失败隔离为 error，不扩散", "消息校验：未知 target/action 一律拒绝"] }
+  ]
+}

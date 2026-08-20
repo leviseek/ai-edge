@@ -1,0 +1,130 @@
+/* ai-edge 共享 UI 样式 */
+:root {
+  --bg: #f5f7fa;
+  --panel: #ffffff;
+  --border: #dce3ea;
+  --text: #1f2933;
+  --muted: #6b7a8c;
+  --accent: #1f63ff;
+  --accent-weak: #e8efff;
+  --danger: #d33f49;
+  --ok: #1a9c5b;
+  --radius: 10px;
+  --shadow: 0 2px 10px rgba(20, 40, 80, 0.08);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+#root { display: flex; flex-direction: column; min-height: 100vh; }
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 16px;
+}
+
+/* ---- 状态条 / 按钮 ---- */
+.statusbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+  flex-wrap: wrap;
+}
+.statusbar .badge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  background: var(--accent-weak);
+  color: var(--accent);
+}
+
+button {
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+button:hover { background: #eef2f7; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+button.primary:hover { background: #1550d6; }
+
+input, select, textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 13px;
+  font-family: inherit;
+  background: #fff;
+  color: var(--text);
+}
+input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent-weak); border-color: var(--accent); }
+
+label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+
+h1 { font-size: 16px; margin: 0; }
+h2 { font-size: 14px; margin: 18px 0 8px; }
+h3 { font-size: 13px; margin: 12px 0 6px; }
+
+.muted { color: var(--muted); font-size: 12px; }
+.err { color: var(--danger); font-size: 13px; white-space: pre-wrap; }
+.ok { color: var(--ok); }
+
+/* ---- popup ---- */
+.popup-root { width: 320px; padding: 12px; gap: 10px; display: flex; flex-direction: column; }
+
+/* ---- side panel ---- */
+.sp-root { padding: 14px; gap: 12px; display: flex; flex-direction: column; }
+.mode-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.mode-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  border: 1px solid var(--border); border-radius: 999px;
+  padding: 5px 12px; cursor: pointer; user-select: none; font-size: 13px; background: var(--panel);
+}
+.mode-chip.on { background: var(--accent-weak); border-color: var(--accent); color: var(--accent); }
+
+.progress-list { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+.progress-list .cur { color: var(--accent); font-weight: 600; }
+
+.result { display: flex; flex-direction: column; gap: 12px; }
+.result section { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; }
+.result ul { margin: 6px 0; padding-left: 20px; }
+.result table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.result th, .result td { border: 1px solid var(--border); padding: 6px 8px; text-align: left; vertical-align: top; }
+.result th { background: var(--accent-weak); }
+.result a { color: var(--accent); word-break: break-all; }
+.kv { display: flex; gap: 8px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+
+/* ---- options ---- */
+.opt-root { max-width: 760px; margin: 0 auto; padding: 20px; gap: 14px; display: flex; flex-direction: column; width: 100%; }
+.opt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field > span { font-size: 12px; color: var(--muted); }
+.row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.row > * { flex: 0 0 auto; }
+.grow { flex: 1 1 auto; }
