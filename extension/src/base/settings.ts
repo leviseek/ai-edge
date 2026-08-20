@@ -107,12 +107,17 @@ export const DEFAULT_SETTINGS: BaseSettings = {
 const STORAGE_KEY = 'ai-edge:settings';
 
 function deepMerge<T>(base: T, patch: unknown): T {
-  if (Array.isArray(base)) return (patch as T) ?? base;
+  if (Array.isArray(base)) {
+    // 数组合并（默认在先、存储在后去重）：保证新增内置插件默认启用，且不覆盖用户已禁用的项
+    const patchArr = Array.isArray(patch) ? (patch as unknown[]) : [];
+    const merged = [...patchArr, ...(base as unknown[])];
+    return merged.filter((v, i) => merged.indexOf(v) === i) as T;
+  }
   if (base !== null && typeof base === 'object') {
     const out: Record<string, unknown> = { ...(base as Record<string, unknown>) };
     if (patch && typeof patch === 'object') {
       for (const [k, v] of Object.entries(patch as Record<string, unknown>)) {
-        // 数组(如 enabled 列表)与标量直接覆盖，嵌套对象递归合并
+        // 数组与标量直接覆盖，嵌套对象递归合并
         out[k] =
           k in out && typeof v === 'object' && v !== null && !Array.isArray(v) && typeof out[k] === 'object' && out[k] !== null
             ? deepMerge(out[k], v)

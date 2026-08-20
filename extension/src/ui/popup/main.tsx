@@ -23,13 +23,30 @@ function App() {
   const [aiReason, setAiReason] = useState('');
   const [dlMsg, setDlMsg] = useState('');
 
-  const downloaderEnabled = ping?.plugins.some((p) => p.id === 'resource-downloader' && p.state === 'active');
+  const allPlugins = ping?.plugins ?? [];
+  const downloaderEnabled = allPlugins.some((p) => p.id === 'resource-downloader' && p.state === 'active');
+  const downloaderPresent = allPlugins.some((p) => p.id === 'resource-downloader');
 
   useEffect(() => {
     void api.ping().then(setPing).catch((e) => setErr(String(e)));
   }, []);
 
-  const activePlugins = ping?.plugins.filter((p) => p.state === 'active') ?? [];
+  const refresh = async () => {
+    try {
+      setPing(await api.ping());
+    } catch (e) {
+      setErr(String(e));
+    }
+  };
+
+  const enablePlugin = async (id: string, enabled = true) => {
+    try {
+      await api.setPluginEnabled(id, enabled);
+      await refresh();
+    } catch (e) {
+      setErr(String(e));
+    }
+  };
 
   const scan = async () => {
     const [t] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -104,7 +121,7 @@ function App() {
         <span className="grow" />
         <span className="row">
           <button className={tab === 'overview' ? 'primary' : ''} onClick={() => setTab('overview')}>概览</button>
-          {downloaderEnabled && (
+          {downloaderPresent && (
             <button className={tab === 'download' ? 'primary' : ''} onClick={() => setTab('download')}>资源下载</button>
           )}
         </span>
@@ -115,16 +132,23 @@ function App() {
       {tab === 'overview' && (
         <>
           <div className="panel">
-            <div className="muted">已激活插件</div>
-            {activePlugins.length ? (
-              activePlugins.map((p) => (
-                <div className="row" key={p.id}>
-                  <span className="grow">{p.name}</span>
-                  <span className="badge">{p.state}</span>
+            <div className="muted">插件</div>
+            {allPlugins.length ? (
+              allPlugins.map((p) => (
+                <div className="row" key={p.id} style={{ marginTop: 4 }}>
+                  <span className="grow">
+                    {p.name}
+                    {p.state === 'error' && p.error ? <span className="err"> · {p.error}</span> : null}
+                  </span>
+                  {p.state === 'active' ? (
+                    <span className="badge">运行中</span>
+                  ) : (
+                    <button onClick={() => void enablePlugin(p.id, true)}>启用</button>
+                  )}
                 </div>
               ))
             ) : (
-              <div className="muted">无激活插件（请到设置页启用）</div>
+              <div className="muted">无插件（请重新加载扩展）</div>
             )}
           </div>
 
@@ -160,6 +184,14 @@ function App() {
 
       {tab === 'download' && (
         <>
+          {!downloaderEnabled && (
+            <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div className="muted">资源下载器插件未启用，启用后即可扫描/下载当前页面资源。</div>
+              <button className="primary" onClick={() => void enablePlugin('resource-downloader')}>启用资源下载器</button>
+            </div>
+          )}
+          {downloaderEnabled && (
+          <>
           <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <div className="row">
               <button className="primary grow" onClick={scan} disabled={loading}>
@@ -220,6 +252,8 @@ function App() {
             </>
           )}
           {!resources && !loading && <div className="muted">点「扫描当前页资源」开始采集</div>}
+          </>
+          )}
         </>
       )}
     </div>
