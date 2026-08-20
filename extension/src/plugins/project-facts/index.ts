@@ -10,7 +10,9 @@ import {
   parseImport,
   buildBrief,
   detectHallucinations,
+  mergeFacts,
 } from './kb';
+import { EdgeError, ErrorCodes } from '../../base/errors';
 import type { FactEntry, ScanMessage, HallucinationItem } from './types';
 
 export function createProjectFactsPlugin(): EdgePlugin<PluginContext> {
@@ -70,6 +72,29 @@ export function createProjectFactsPlugin(): EdgePlugin<PluginContext> {
           const facts = await loadFacts();
           const flagged = detectHallucinations(facts, scan.messages ?? []);
           return { ...scan, factsCount: facts.length, flagged };
+        }),
+      );
+
+      // 从本地项目事实服务同步（facts-scan 产生的 facts.json）
+      disposers.push(
+        ctx.bus.register('plugin:project-facts', 'sync-local', async (req: { url?: string }) => {
+          const url = String(req.url || ctx.settings.get().ui.localFactsUrl || 'http://127.0.0.1:8787/facts.json');
+          let res: Response;
+          try {
+            res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+          } catch (e) {
+            throw new EdgeError(ErrorCodes.PROVIDER, `无法连接本地事实服务（${url}）：${e instanceof Error ? e.message : String(e)}`);
+          }
+          if (!res.ok) throw new EdgeError(ErrorCodes.PROVIDER, `本地事实服务返回 HTTP ${res.status}`);
+          const data = (await res.json()) as { project?: string; facts?: Partial<FactEntry>[] };
+          const incoming = (data.facts ?? [])
+            .map((it) => normalizeEntry(it))
+            .filter(Boolean) as FactEntry[];
+          const existing = await loadFacts();
+          const merged = mergeFacts(existing, incoming);
+          await saveFacts(merged.list);
+          ctx.log.info(`本地同步完成：+${merged.added} / 更新 ${merged.updated}`);
+          return { url, project: data.project ?? '', added: merged.added, updated: merged.updated, total: merged.list.length };
         }),
       );
 

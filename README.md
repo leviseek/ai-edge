@@ -21,6 +21,12 @@
 2. 点「生成 Brief」→「复制会话 Brief」，把这段「以此为准」粘贴到任意 AI 会话开头（会话变长/换会话都重贴一次）。
 3. 在 ChatGPT / Claude / DeepSeek 等页面：脚本自动扫描助手消息中「已实现/已完成/当前版本…」类断言，与 KB 比对——不匹配就给对应消息挂「⚠ 疑似幻觉」，点一下即复制「澄清请求」话术；侧栏「扫描当前会话」可整段诊断。
 
+**扫本地项目（自动填充 KB）**：在项目目录运行
+```bash
+node D:\ai-work\ai-edge\tools\facts-scan.mjs <项目目录> --serve      # 启动本地事实服务（127.0.0.1:8787/facts.json）
+```
+然后在侧栏「项目事实」→「从本地同步」，KB 即按 kind+标题自动合并（README/SPEC 章节 → 已实现/决策/待办，`package.json` → 决策/架构，源码模块清单 → 架构，代码内 TODO → 待办）。项目可放 `.aiedge-facts.json` 配置 ignore/srcRoots/sections。也可 `node tools/facts-scan.mjs <dir> --out facts.json` 输出文件。
+
 ## 快速开始
 
 ```bash

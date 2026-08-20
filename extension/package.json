@@ -12,7 +12,10 @@
     "smoke:m3": "esbuild scripts/m3-smoke.ts --bundle --platform=node --format=esm --outfile=.smoke/smoke-m3.mjs && node .smoke/smoke-m3.mjs",
     "smoke:m4": "esbuild scripts/m4-smoke.ts --bundle --platform=node --format=esm --outfile=.smoke/smoke-m4.mjs && node .smoke/smoke-m4.mjs",
     "smoke:m5": "esbuild scripts/m5-smoke.ts --bundle --platform=node --format=esm --outfile=.smoke/smoke-m5.mjs && node .smoke/smoke-m5.mjs",
-    "smoke:m6": "esbuild scripts/m6-smoke.ts --bundle --platform=node --format=esm --outfile=.smoke/smoke-m6.mjs && node .smoke/smoke-m6.mjs"
+    "smoke:m6": "esbuild scripts/m6-smoke.ts --bundle --platform=node --format=esm --outfile=.smoke/smoke-m6.mjs && node .smoke/smoke-m6.mjs",
+    "smoke:m7": "esbuild scripts/m7-smoke.ts --bundle --platform=node --format=esm --outfile=.smoke/smoke-m7.mjs && node .smoke/smoke-m7.mjs",
+    "facts:scan": "node tools/facts-scan.mjs",
+    "facts:serve": "node tools/facts-scan.mjs . --serve"
   },
   "dependencies": {
     "react": "^18.3.1",

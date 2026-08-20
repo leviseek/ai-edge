@@ -185,4 +185,28 @@ export function buildClarify(claim: string): string {
   return `在继续前请先核对：你提到的「${claim}」目前项目里**尚未实现**（ai-edge·项目事实锚检测，且“已实现”清单中无对应条目）。请按项目真实状态重新说明，不要将未完成项当作已完成，也不要在此之上继续叠加实现。`;
 }
 
+/** 合并本地扫描结果到 KB：按 kind+title 去重，扫描条目更新详情/路径，保留用户条目与顺序 */
+export function mergeFacts(
+  existing: FactEntry[],
+  incoming: FactEntry[],
+): { list: FactEntry[]; added: number; updated: number } {
+  const list = existing.slice();
+  let added = 0;
+  let updated = 0;
+  for (const inc of incoming) {
+    const idx = list.findIndex((f) => f.kind + ':' + f.title === inc.kind + ':' + inc.title);
+    if (idx >= 0) {
+      const cur = list[idx];
+      if (inc.detail && inc.detail !== cur.detail) {
+        list[idx] = { ...cur, detail: inc.detail, path: inc.path || cur.path, updatedAt: Date.now() };
+        updated++;
+      }
+    } else {
+      list.push({ ...inc, id: inc.id || newId() });
+      added++;
+    }
+  }
+  return { list, added, updated };
+}
+
 export { KB_KEY };

@@ -62,8 +62,9 @@
 - [x] 幻觉检测：ChatGPT/Claude/DeepSeek/Kimi 等页面 content 扫描「已实现/已完成/当前版本…」断言 → 与 KB「已实现」比对（子串 + 标题分词命中）→ 疑似幻觉 ⚠ 挂标记，点击一键复制澄清话术；侧栏「扫描当前会话」出整段诊断报告。
 - [x] UI：Side Panel「项目事实」页签（增删改 / 导入 / Brief / 扫描）；后台注册且默认启用。
 - [x] 验证：`smoke:m6`（导入/Brief/断言提取/检出与澄清）全绿；typecheck 零错；build 通过。
+- [x] **本地项目同步**：`tools/facts-scan.mjs` 扫描项目目录（README/SPEC 章节→已实现/决策/待办，`package.json`→决策/架构，源码模块→架构，代码 TODO→待办），`--serve` 起 `127.0.0.1:8787/facts.json`；插件「从本地同步」按 kind+标题合并入库（`mergeFacts` 幂等），`smoke:m7` 全绿。
 
-**真机建议**：把当前项目的「已实现 + 决策 + 待办」导入 KB → 下次用 ChatGPT 前先贴一次 Brief → 会话中遇到「你已经做了 X」直接点 ⚠ 复制澄清；长期使用可每周把实现进展同步进 KB。
+**真机建议**：把当前项目的「已实现 + 决策 + 待办」导入 KB → 下次用 ChatGPT 前先贴一次 Brief → 会话中遇到「你已经做了 X」直接点 ⚠ 复制澄清；每周跑一次 `facts-scan --serve` 并同步，保持 KB 与代码一致。
 
 ## M6 — 分发与生态
 

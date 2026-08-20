@@ -45,6 +45,8 @@ export interface BaseSettings {
   ui: {
     theme: 'light' | 'dark' | 'auto';
     summarizeModes: string[];
+    /** 本地事实同步端点（facts-scan 服务） */
+    localFactsUrl: string;
   };
 }
 
@@ -101,6 +103,7 @@ export const DEFAULT_SETTINGS: BaseSettings = {
   ui: {
     theme: 'auto',
     summarizeModes: ['summary'],
+    localFactsUrl: 'http://127.0.0.1:8787/facts.json',
   },
 };
 

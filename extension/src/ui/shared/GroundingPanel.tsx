@@ -26,6 +26,8 @@ export function GroundingPanel() {
   const [brief, setBrief] = useState('');
   const [scan, setScan] = useState<ScanResp | null>(null);
   const [scanning, setScanning] = useState(false);
+  const [localUrl, setLocalUrl] = useState('http://127.0.0.1:8787/facts.json');
+  const [syncing, setSyncing] = useState(false);
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
 
@@ -113,6 +115,25 @@ export function GroundingPanel() {
     }
   };
 
+  const doSync = async () => {
+    if (!localUrl.trim()) return;
+    setSyncing(true);
+    setErr('');
+    try {
+      const r = await rpc<{ url: string }, { url: string; project: string; added: number; updated: number; total: number }>(
+        'plugin:project-facts',
+        'sync-local',
+        { url: localUrl.trim() },
+      );
+      await refresh();
+      setMsg(`已同步「${r.project || r.url}」：+${r.added} / 更新 ${r.updated}，KB 共 ${r.total} 条`);
+    } catch (e) {
+      setErr(String(e));
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const shown = facts.filter((f) => filter === '全部' || f.kind === filter);
 
   return (
@@ -148,6 +169,16 @@ export function GroundingPanel() {
             {scan.flagged.length === 0 && <div className="muted">未发现与 KB 冲突的“已完成”断言。</div>}
           </div>
         )}
+      </div>
+
+      <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div className="muted">从本地项目同步（先运行 tools/facts-scan.mjs 的 --serve）</div>
+        <div className="row">
+          <input value={localUrl} onChange={(e) => setLocalUrl(e.target.value)} className="grow" placeholder="http://127.0.0.1:8787/facts.json" />
+          <button className="primary" onClick={() => void doSync()} disabled={syncing}>
+            {syncing ? '同步中…' : '从本地同步'}
+          </button>
+        </div>
       </div>
 
       <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
