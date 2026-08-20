@@ -1,7 +1,7 @@
 /** UI：Options —— AI 提供商 / 搜索服务 / 插件启停 / 健康检查 */
 import { createRoot } from 'react-dom/client';
 import { useEffect, useState } from 'react';
-import type { BaseSettings, ProviderConfig, SearchConfig } from '../../base/settings';
+import type { BaseSettings, ProviderConfig, SearchConfig, AsrConfig } from '../../base/settings';
 import { api, type PingResult, type ProviderHealth } from '../shared/api';
 import { hasNetworkPermission, ensureNetworkPermission } from '../shared/net-permission';
 
@@ -41,6 +41,10 @@ function App() {
   };
   const setActiveProvider = (id: string) => setSettings((s) => (s ? { ...s, ai: { ...s.ai, activeProviderId: id } } : s));
   const setActiveSearch = (id: string) => setSettings((s) => (s ? { ...s, search: { ...s.search, activeServiceId: id } } : s));
+  const setAsr = (id: string, patch: Partial<AsrConfig>) => {
+    setSettings((s) => (s ? { ...s, asr: { ...s.asr, providers: { ...s.asr.providers, [id]: { ...s.asr.providers[id], ...patch } as AsrConfig } } } : s));
+  };
+  const setActiveAsr = (id: string) => setSettings((s) => (s ? { ...s, asr: { ...s.asr, activeAsrId: id } } : s));
 
   const save = async () => {
     if (!settings) return;
@@ -49,6 +53,7 @@ function App() {
       const updated = await api.updateSettings({
         ai: settings.ai,
         search: settings.search,
+        asr: settings.asr,
         ui: settings.ui,
       });
       setSettings(updated);
@@ -181,6 +186,29 @@ function App() {
             </div>
           </div>
         ))}
+      </div>
+
+      <div className="panel">
+        <h2>语音识别（视频字幕 ASR · 骨架）</h2>
+        <div className="muted">用于视频字幕插件的音频转写（如 OpenAI Whisper）</div>
+        {Object.entries(settings.asr.providers).map(([id, a]) => (
+          <div key={id} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: 10, marginTop: 8 }}>
+            <div className="row">
+              <span className="grow"><strong>{a.label ?? id}</strong></span>
+              <input type="radio" checked={settings.asr.activeAsrId === id} onChange={() => setActiveAsr(id)} title="设为默认" />
+            </div>
+            <div className="opt-grid" style={{ marginTop: 8 }}>
+              <div className="field"><span>Base URL</span><input value={a.baseUrl} onChange={(e) => setAsr(id, { baseUrl: e.target.value })} /></div>
+              <div className="field"><span>模型</span><input value={a.model} onChange={(e) => setAsr(id, { model: e.target.value })} placeholder="whisper-1" /></div>
+              <div className="field"><span>API Key</span><input type="password" value={a.apiKey} onChange={(e) => setAsr(id, { apiKey: e.target.value })} autoComplete="off" /></div>
+            </div>
+          </div>
+        ))}
+        <div className="row" style={{ marginTop: 8 }}>
+          <button onClick={() => void grantNet().then(() => window.alert('若被浏览器拦截，请在扩展详情页授权站点访问后重试'))}>
+            授权联网（ASR/深抓）
+          </button>
+        </div>
       </div>
 
       <div className="panel">

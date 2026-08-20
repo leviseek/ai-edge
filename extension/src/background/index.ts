@@ -3,13 +3,19 @@ import { Logger } from '../base/logger';
 import { SettingsStore, type BaseSettings } from '../base/settings';
 import { MessageBus } from '../base/message-bus';
 import { TabMessenger } from '../base/tab-messenger';
+import { OffscreenManager } from '../base/offscreen';
 import { PluginRegistry } from '../base/registry';
 import { AIProviderRegistry } from '../core/ai/registry';
 import { SearchServiceRegistry } from '../core/search/registry';
+import { ASRProviderRegistry } from '../core/asr/registry';
 import type { PluginContext } from '../base/context';
 import { isRequest, type Envelope } from '../shared/protocol';
 import { SUMMARY_MANIFEST } from '../plugins/ai-summary/manifest';
 import { createAiSummaryPlugin } from '../plugins/ai-summary/index';
+import { RESOURCE_MANIFEST } from '../plugins/resource-downloader/manifest';
+import { createResourceDownloaderPlugin } from '../plugins/resource-downloader/index';
+import { SUBTITLE_MANIFEST } from '../plugins/video-subtitle/manifest';
+import { createVideoSubtitlePlugin } from '../plugins/video-subtitle/index';
 
 const log = new Logger('base');
 const settings = new SettingsStore();
@@ -17,9 +23,20 @@ const bus = new MessageBus(log);
 const tabs = new TabMessenger();
 const ai = new AIProviderRegistry(log);
 const search = new SearchServiceRegistry(log);
+const asr = new ASRProviderRegistry(log);
+const media = new OffscreenManager(log);
 const registry = new PluginRegistry<PluginContext>(log);
 
-const pluginCtx: PluginContext = { bus, tabs, settings, ai, search, log: log.child('plugin') };
+const pluginCtx: PluginContext = {
+  bus,
+  tabs,
+  settings,
+  ai,
+  search,
+  asr,
+  media,
+  log: log.child('plugin'),
+};
 
 let inited = false;
 
@@ -31,11 +48,14 @@ async function init(): Promise<void> {
   await settings.load();
   ai.syncFromSettings(settings.get().ai.providers);
   search.syncFromSettings(settings.get().search.services);
+  asr.syncFromSettings(settings.get().asr.providers);
 
   registerBaseActions();
 
-  // 注册插件（未来：按清单自动发现）
+  // 注册插件
   registry.register(SUMMARY_MANIFEST, createAiSummaryPlugin);
+  registry.register(RESOURCE_MANIFEST, createResourceDownloaderPlugin);
+  registry.register(SUBTITLE_MANIFEST, createVideoSubtitlePlugin);
   await registry.activateAll(pluginCtx, settings.get().plugins.enabled);
 
   // 打开侧栏的默认行为（action 点击）
@@ -57,6 +77,9 @@ function registerBaseActions(): void {
     providers: ai.list().map((p) => ({ id: p.id, label: p.label })),
     activeProviderId: settings.get().ai.activeProviderId,
     searchServices: search.list().map((s) => ({ id: s.id, label: s.label })),
+    asrServices: asr.list().map((a) => ({ id: a.id, label: a.label })),
+    activeAsrId: settings.get().asr.activeAsrId,
+    mediaCapable: media.capable,
   }));
 
   bus.register('base', 'get-settings', async () => settings.get());
@@ -65,6 +88,7 @@ function registerBaseActions(): void {
     const s = await settings.resetToDefaults();
     ai.syncFromSettings(s.ai.providers);
     search.syncFromSettings(s.search.services);
+    asr.syncFromSettings(s.asr.providers);
     bus.postEvent('base:settings-changed', s);
     return s;
   });
@@ -73,6 +97,7 @@ function registerBaseActions(): void {
     await settings.patch(patch);
     ai.syncFromSettings(settings.get().ai.providers);
     search.syncFromSettings(settings.get().search.services);
+    asr.syncFromSettings(settings.get().asr.providers);
     bus.postEvent('base:settings-changed', settings.get());
     return settings.get();
   });

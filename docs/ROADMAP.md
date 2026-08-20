@@ -44,12 +44,16 @@
 
 **验收**：`npm run typecheck` 零错误；`npm run build` 通过；`npm run smoke:m4` 全绿（MD 块级/行内/引用与空行）；M2/M3 冒烟保持全绿。真机建议核对：FAB 卡快速总结、来源 ✓/✗ 标记、Markdown 报告渲染、首次联网授权弹窗。
 
-## M5 — 预留插件落地
+## M5 — 预留插件落地（进行中）
 
-| 插件 | 前置基座能力 | 说明 |
+| 插件 | 状态 | 落地内容 |
 | --- | --- | --- |
-| `resource-downloader` | downloads 权限、资源采集器（webRequest/Performance API 双方案） | 资源分类 + AI 语义筛选 + 批量下载 |
-| `video-subtitle` | Offscreen 会话管理（`ctx.media`）、ASRProvider 抽象 | 音轨采集 → ASR → 字幕注入（Shadow DOM） |
+| `resource-downloader` | ✅ 完整 | Performance-API 采集（`resources`）、9 类分类、AI 语义筛选（LLM 选中列表回传）、`chrome.downloads` 批量下载；Popup「资源下载」页签（扫描/筛选/多选/下载）；`smoke:m5` 覆盖分类/WAV/SRT |
+| `video-subtitle` | 🔶 骨架 | 基座能力 `ctx.media`（Offscreen 音频解码为 16kHz PCM）+ `ctx.asr`（ASRProvider 抽象 + OpenAI Whisper 适配器 + settings.asr）；插件 action：`list-videos` / `transcribe-uri`（URL 音频→SRT，核心链路可用）/ `inject-vtt`（content 注入原生字幕轨）/ `status`；`smoke:m5` 覆盖 WAV/SRT/VTT |
+| `video-subtitle` 二期 | ⏳ | 页面 `<video>` 音频捕获（`captureStream`→MediaRecorder→Blob→decodeAudio→ASR）、字幕 UI 与设置面板、`tabCapture` 兜底评估 |
+
+**验收（本轮）**：`npm run typecheck` 零错误；`npm run build` 通过（含 `offscreen.js`/`offscreen.html`）；`smoke:m5` 全绿，M2–M4 冒烟保持全绿。
+**真机建议**：① Popup→资源下载→扫描 B 站/任意页→分类/AI 筛选→下载选中；② 若配好 Whisper Key，`transcribe-uri` 对一段 mp3/m4a URL 验证转写（后续接页面捕获即得字幕）。
 
 ## M6 — 分发与生态
 

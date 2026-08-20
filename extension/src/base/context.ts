@@ -2,9 +2,11 @@
 import type { MessageBus } from './message-bus';
 import type { TabMessenger } from './tab-messenger';
 import type { SettingsStore } from './settings';
+import type { OffscreenManager } from './offscreen';
 import type { Logger } from './logger';
 import type { AIProviderRegistry } from '../core/ai/registry';
 import type { SearchServiceRegistry } from '../core/search/registry';
+import type { ASRProviderRegistry } from '../core/asr/registry';
 
 export interface PluginContext {
   bus: MessageBus;
@@ -12,5 +14,7 @@ export interface PluginContext {
   settings: SettingsStore;
   ai: AIProviderRegistry;
   search: SearchServiceRegistry;
+  asr: ASRProviderRegistry;
+  media: OffscreenManager;
   log: Logger;
 }

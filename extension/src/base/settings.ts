@@ -16,6 +16,15 @@ export interface SearchConfig {
   baseUrl?: string;
 }
 
+/** ASR（语音识别）提供商配置 */
+export interface AsrConfig {
+  kind: 'openai-whisper';
+  label?: string;
+  baseUrl: string;
+  apiKey: string;
+  model: string;
+}
+
 export interface BaseSettings {
   ai: {
     activeProviderId: string;
@@ -25,6 +34,10 @@ export interface BaseSettings {
   search: {
     activeServiceId: string;
     services: Record<string, SearchConfig>;
+  };
+  asr: {
+    activeAsrId: string;
+    providers: Record<string, AsrConfig>;
   };
   plugins: {
     enabled: string[];
@@ -70,8 +83,20 @@ export const DEFAULT_SETTINGS: BaseSettings = {
       tavily: { kind: 'tavily', label: 'Tavily', apiKey: '' },
     },
   },
+  asr: {
+    activeAsrId: 'whisper',
+    providers: {
+      whisper: {
+        kind: 'openai-whisper',
+        label: 'OpenAI Whisper',
+        baseUrl: 'https://api.openai.com/v1',
+        apiKey: '',
+        model: 'whisper-1',
+      },
+    },
+  },
   plugins: {
-    enabled: ['ai-summary'],
+    enabled: ['ai-summary', 'resource-downloader', 'video-subtitle'],
   },
   ui: {
     theme: 'auto',

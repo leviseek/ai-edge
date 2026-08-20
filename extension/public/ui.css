@@ -168,3 +168,9 @@ h3 { font-size: 13px; margin: 12px 0 6px; }
 .verified-ok { color: var(--ok); }
 .verified-fail { color: var(--danger); }
 .verified-skip { color: var(--muted); }
+
+/* ---- 资源下载器 ---- */
+.res-list { max-height: 320px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+.res-item { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+.res-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.res-size { flex: 0 0 auto; }

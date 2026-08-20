@@ -58,6 +58,7 @@ function makePng(size, [r, g, b]) {
 const entries = {
   background: 'src/background/index.ts',
   content: 'src/content/index.ts',
+  offscreen: 'src/offscreen/index.ts',
   popup: 'src/ui/popup/main.tsx',
   sidepanel: 'src/ui/sidepanel/main.tsx',
   options: 'src/ui/options/main.tsx',

@@ -8,9 +8,9 @@
 
 | 插件 | 状态 | 说明 |
 | --- | --- | --- |
-| `ai-summary` | ✅ 骨架可用 | AI 总结页面内容，支持模式：核心摘要 / 可行性调研 / 优缺点 / 同品类横向比较（网络搜索） |
-| `resource-downloader` | 🔒 预留 | 下载当前页面网络传输的各种类型资源（设计见 `docs/PLUGIN_API.md`） |
-| `video-subtitle` | 🔒 预留 | AI 视频字幕（设计见 `docs/PLUGIN_API.md`） |
+| `ai-summary` | ✅ 可用 | AI 总结页面内容：核心摘要 / 可行性调研 / 优缺点 / 同品类横向比较（长文分段合并、流式实时渲染、fallback 自动降级、来源校验） |
+| `resource-downloader` | ✅ 可用 | 扫描/分类当前页网络资源（Performance-API），AI 语义筛选，downloads API 批量下载（Popup 操作） |
+| `video-subtitle` | 🔶 骨架 | Offscreen 解码 + Whisper ASR 转写核心链路可用（URL 音频→字幕）；页面 `<video>` 音频捕获为二期 |
 
 ## 快速开始
 

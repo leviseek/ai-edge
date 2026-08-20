@@ -1,10 +1,12 @@
 /** Content Script：响应基座请求 + 注入悬浮快速总结卡（Shadow DOM 隔离） */
 import { extractPage } from '../core/extract/extractor';
+import { collectResources } from '../core/extract/resources';
 import { isRequest, okResponse, errResponse, type Envelope } from '../shared/protocol';
 import { toErrorCode } from '../base/errors';
 import { rpc, onEvent } from '../shared/rpc';
 import { buildMarkdown } from '../ui/shared/result';
 import type { SummaryOutput, SummaryMode, ProgressEvent } from '../plugins/ai-summary/export';
+import type { VideoInfo } from '../plugins/video-subtitle/types';
 
 const CONTENT_TARGET = 'content:main';
 
@@ -25,6 +27,28 @@ function main(): void {
       case 'extract':
         try {
           sendResponse(okResponse(msg, extractPage()));
+        } catch (e) {
+          sendResponse(errResponse(msg, toErrorCode(e), e instanceof Error ? e.message : String(e)));
+        }
+        return true;
+      case 'resources':
+        // 当前页网络资源采集（Performance-API，无附加权限）
+        try {
+          sendResponse(okResponse(msg, collectResources()));
+        } catch (e) {
+          sendResponse(errResponse(msg, toErrorCode(e), e instanceof Error ? e.message : String(e)));
+        }
+        return true;
+      case 'videos':
+        try {
+          sendResponse(okResponse(msg, collectVideos()));
+        } catch (e) {
+          sendResponse(errResponse(msg, toErrorCode(e), e instanceof Error ? e.message : String(e)));
+        }
+        return true;
+      case 'inject-vtt':
+        try {
+          sendResponse(okResponse(msg, injectVtt(msg.payload as { index: number; vtt: string })));
         } catch (e) {
           sendResponse(errResponse(msg, toErrorCode(e), e instanceof Error ? e.message : String(e)));
         }
@@ -210,6 +234,55 @@ onEvent('plugin:ai-summary:progress', (data) => {
   const status = shadow?.querySelector<HTMLElement>('.status');
   if (status) status.textContent = ev.message;
 });
+
+/** 收集页面 <video> 元信息 */
+function collectVideos(): VideoInfo[] {  const vids = Array.from(document.querySelectorAll('video'));
+  return vids
+    .map((v, index) => {
+      const el = v as HTMLVideoElement;
+      const src = (el.currentSrc || el.src || '').split(/[?#]/)[0];
+      return {
+        index,
+        src,
+        name: src.split('/').pop() || 'video',
+        duration: el.duration || 0,
+        currentTime: el.currentTime || 0,
+        readyState: el.readyState,
+      };
+    })
+    .filter((v) => /^https?:\/\//i.test(v.src));
+}
+
+/** UTF-8 → base64（VTT data URL 用，避免 unescape 兼容问题） */
+function utf8ToBase64(s: string): string {
+  const bytes = new TextEncoder().encode(s);
+  let bin = '';
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin);
+}
+
+/** 为指定 <video> 注入原生字幕轨 */
+function injectVtt(payload: { index: number; vtt: string }): { ok: boolean; videoIndex: number } {
+  const vids = document.querySelectorAll('video');
+  const el = vids[payload.index];
+  if (!el) throw new Error(`未找到视频 #${payload.index}`);
+  [...el.querySelectorAll('track[data-ai-edge]')].forEach((t) => t.remove());
+  const track = document.createElement('track');
+  track.kind = 'subtitles';
+  track.label = 'AI';
+  track.srclang = 'zh';
+  track.default = true;
+  track.setAttribute('data-ai-edge', '1');
+  track.src = 'data:text/vtt;base64,' + utf8ToBase64(payload.vtt);
+  el.appendChild(track);
+  try {
+    const tt = (el as HTMLVideoElement).textTracks?.[0];
+    if (tt) tt.mode = 'showing';
+  } catch {
+    /* noop */
+  }
+  return { ok: true, videoIndex: payload.index };
+}
 
 const CARD_CSS = `
   :host { all: initial; }
