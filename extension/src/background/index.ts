@@ -58,12 +58,9 @@ async function init(): Promise<void> {
   registry.register(SUBTITLE_MANIFEST, createVideoSubtitlePlugin);
   await registry.activateAll(pluginCtx, settings.get().plugins.enabled);
 
-  // 打开侧栏的默认行为（action 点击）
-  try {
-    void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
-  } catch (e) {
-    log.warn('sidePanel.setPanelBehavior 不可用', e);
-  }
+  // 图标点击默认打开 Popup（default_popup）；侧栏经 Popup 按钮 / 页面 FAB 打开
+  // 注：不设置 setPanelBehavior({ openPanelOnActionClick:true })，
+  //     否则图标点击会抢开侧栏，Popup 永远无法弹出（看不见 Popup 内的功能入口）。
 
   wireRuntimeMessages();
   log.info(`基座就绪；插件：${registry.list().map((p) => `${p.id}:${p.state}`).join(', ')}`);

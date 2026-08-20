@@ -6,6 +6,7 @@ import { api, activeTabId, onEvent } from '../shared/api';
 import { buildMarkdown, buildJson, copyToClipboard } from '../shared/result';
 import { renderMarkdown } from '../shared/markdown-render';
 import { ensureNetworkPermission } from '../shared/net-permission';
+import { ResourcePanel } from '../shared/ResourcePanel';
 
 const MODES: { id: SummaryMode; label: string; hint: string }[] = [
   { id: 'summary', label: '核心摘要', hint: '执行摘要 + 要点 + 结论（长文自动分段）' },
@@ -46,6 +47,7 @@ function App() {
   const [copied, setCopied] = useState('');
   const [hint, setHint] = useState('');
   const [viewMode, setViewMode] = useState<'structured' | 'md'>('structured');
+  const [section, setSection] = useState<'summary' | 'download'>('summary');
   const [provider, setProvider] = useState<ProviderStatus | null>(null);
   const [providerChecking, setProviderChecking] = useState(true);
   const busyRef = useRef(false);
@@ -208,18 +210,25 @@ function App() {
   return (
     <div className="sp-root">
       <div className="statusbar">
-        <strong>AI 总结</strong>
-        <span className="muted">对当前页面</span>
+        <strong>ai-edge</strong>
         <span className="grow" />
-        {providerChecking ? (
+        <span className="row">
+          <button className={section === 'summary' ? 'primary' : ''} onClick={() => setSection('summary')}>AI 总结</button>
+          <button className={section === 'download' ? 'primary' : ''} onClick={() => setSection('download')}>资源下载</button>
+        </span>
+        {section === 'summary' && (providerChecking ? (
           <span className="muted">探测连接…</span>
         ) : provider ? (
           <span className={provider.ok ? 'badge ok' : 'badge bad'}>
             {provider.ok ? '● 已连接' : '● 未连接'} · {provider.label}
           </span>
-        ) : null}
+        ) : null)}
       </div>
 
+      {section === 'download' ? (
+        <ResourcePanel />
+      ) : (
+        <>
       <div className="mode-row">
         {MODES.map((m) => (
           <div
@@ -397,6 +406,8 @@ function App() {
           </div>
           <p className="muted">由 ai-edge 生成 · AI 输出可能存在偏差，请以原始来源为准</p>
         </div>
+      )}
+      </>
       )}
     </div>
   );
