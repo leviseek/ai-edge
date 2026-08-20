@@ -142,7 +142,7 @@ export function ResourcePanel() {
           <div className="res-list panel">
             {hasStream && (
               <div className="muted" style={{ padding: 4, background: '#fff8e6', borderRadius: 6, marginBottom: 4 }}>
-                ⚠️ 检测到 HLS/MSE 视频流（m3u8/m4s/ts）。此地址为分片索引，如需整条视频请用 ffmpeg / N_m3u8DL-RE 等工具合并下载；可点「📋」复制播放列表 URL。
+                ⚠️ 检测到视频流：<b>.m4s</b> 本身即完整音/视频文件（下载后常可改扩展名为 .mp4）；<b>.m3u8</b> 为分片索引、需用 ffmpeg / N_m3u8DL-RE 合并。若直接下载遇 403/过期，请点「📋」复制 URL 交给工具重试。
               </div>
             )}
             {shown.length ? (

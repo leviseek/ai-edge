@@ -51,6 +51,14 @@ async function listRawResources(ctx: PluginContext, tabId: number): Promise<RawR
       /* 该 frame 未注入 content 或受限页 */
     }
   }
+
+  // 合并 webRequest 旁路抓包（补 performance 漏掉的 m4s/m3u8/ts 等流媒体请求）
+  for (const r of ctx.resources.list(tabId)) {
+    const key = resourceKey(r);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(r);
+  }
   return out;
 }
 

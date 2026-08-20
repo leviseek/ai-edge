@@ -3,6 +3,7 @@ import type { MessageBus } from './message-bus';
 import type { TabMessenger } from './tab-messenger';
 import type { SettingsStore } from './settings';
 import type { OffscreenManager } from './offscreen';
+import type { ResourceCapture } from './resource-capture';
 import type { Logger } from './logger';
 import type { AIProviderRegistry } from '../core/ai/registry';
 import type { SearchServiceRegistry } from '../core/search/registry';
@@ -16,5 +17,6 @@ export interface PluginContext {
   search: SearchServiceRegistry;
   asr: ASRProviderRegistry;
   media: OffscreenManager;
+  resources: ResourceCapture;
   log: Logger;
 }

@@ -4,6 +4,7 @@ import { SettingsStore, type BaseSettings } from '../base/settings';
 import { MessageBus } from '../base/message-bus';
 import { TabMessenger } from '../base/tab-messenger';
 import { OffscreenManager } from '../base/offscreen';
+import { ResourceCapture } from '../base/resource-capture';
 import { PluginRegistry } from '../base/registry';
 import { AIProviderRegistry } from '../core/ai/registry';
 import { SearchServiceRegistry } from '../core/search/registry';
@@ -25,6 +26,7 @@ const ai = new AIProviderRegistry(log);
 const search = new SearchServiceRegistry(log);
 const asr = new ASRProviderRegistry(log);
 const media = new OffscreenManager(log);
+const resources = new ResourceCapture(log);
 const registry = new PluginRegistry<PluginContext>(log);
 
 const pluginCtx: PluginContext = {
@@ -35,6 +37,7 @@ const pluginCtx: PluginContext = {
   search,
   asr,
   media,
+  resources,
   log: log.child('plugin'),
 };
 
@@ -49,6 +52,7 @@ async function init(): Promise<void> {
   ai.syncFromSettings(settings.get().ai.providers);
   search.syncFromSettings(settings.get().search.services);
   asr.syncFromSettings(settings.get().asr.providers);
+  resources.install();
 
   registerBaseActions();
 
