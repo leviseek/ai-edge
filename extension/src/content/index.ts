@@ -281,24 +281,40 @@ function utf8ToBase64(s: string): string {
   return btoa(bin);
 }
 
-/** 收集当前 AI 会话消息（按站点选择器，尽力而为） */
+/** 收集当前 AI 会话消息（分层采集：站点选择器 → 通用长文本块兜底，覆盖分享页/新布局） */
 function collectMessages(): ScanMessage[] {
   const out: ScanMessage[] = [];
   const host = location.hostname;
+  const push = (role: string, text: string): void => {
+    const t = (text || '').trim();
+    if (t && !out.some((m) => m.text === t)) out.push({ role, text: t });
+  };
   try {
     if (/chatgpt\.com|chat\.openai\.com/.test(host)) {
+      // 首选：标准会话页的带角色节点
       document.querySelectorAll('[data-message-author-role]').forEach((el) => {
-        const role = el.getAttribute('data-message-author-role') ?? '';
-        out.push({ role, text: (el as HTMLElement).innerText || '' });
+        push(el.getAttribute('data-message-author-role') ?? 'assistant', (el as HTMLElement).innerText);
       });
+      // 兜底：分享页(/s/…)/新布局——按消息正文块采集（≥某阈值才追加）
+      if (out.length < 6) {
+        document.querySelectorAll('[data-message-id], [data-message-role], .markdown, [class*="markdown"], .prose, .whitespace-pre-wrap').forEach((el) => {
+          const t = (el as HTMLElement).innerText || '';
+          if (t.trim().length < 24) return;
+          const role = el.getAttribute('data-message-author-role') ?? (el.closest('[data-message-author-role]')?.getAttribute('data-message-author-role') ?? 'assistant');
+          push(role, t);
+        });
+      }
     } else if (/claude\.ai/.test(host)) {
-      document.body.querySelectorAll('.font-claude-message').forEach((el) => {
-        out.push({ role: 'assistant', text: (el as HTMLElement).textContent || '' });
-      });
+      document.body.querySelectorAll('.font-claude-message').forEach((el) => push('assistant', (el as HTMLElement).textContent || ''));
+      if (out.length < 6) {
+        document.body.querySelectorAll('[data-testid*="message"], .prose').forEach((el) => {
+          const t = (el as HTMLElement).textContent || '';
+          if (t.trim().length < 24) return;
+          push('assistant', t);
+        });
+      }
     } else if (/chat\.deepseek\.com/.test(host)) {
-      document.querySelectorAll('[class*="ds-markdown"], .ds-markdown').forEach((el) => {
-        out.push({ role: 'assistant', text: (el as HTMLElement).textContent || '' });
-      });
+      document.querySelectorAll('[class*="ds-markdown"], .ds-markdown').forEach((el) => push('assistant', (el as HTMLElement).textContent || ''));
     }
   } catch {
     /* 忽略 */

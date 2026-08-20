@@ -124,6 +124,29 @@ export function extractClaim(text: string): string {
   return m ? m[1].trim() : '';
 }
 
+/** 一条消息/大段文本中提取多个断言短语 */
+export function extractAllClaims(text: string, limit = 6): string[] {
+  const re =
+    /(?:已(?:经)?实现|已(?:经)?完成|已经做(?:过|好)?|当前(?:版本|实现|代码|项目)|之前的实现|目前(?:已)?(?:实现|支持))\s*[：:，,、]?\s*([^\n，。；！?！?（(]{2,42})/g;
+  const out: string[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text || '')) && out.length < limit) {
+    const c = m[1].trim();
+    if (c && !out.includes(c)) out.push(c);
+  }
+  return out;
+}
+
+/** 把粘贴的转写文本切成消息块（DOM 无关的兜底输入） */
+export function messagesFromText(text: string, role = 'assistant'): ScanMessage[] {
+  return String(text || '')
+    .replace(/\r\n/g, '\n')
+    .split(/\n\s*\n+/)
+    .map((b) => b.trim())
+    .filter((b) => b.length >= 8)
+    .map((b) => ({ role, text: b }));
+}
+
 export interface ClaimCheck {
   found: boolean;
   score: number;
@@ -160,23 +183,23 @@ export function checkClaim(facts: FactEntry[], claim: string): ClaimCheck {
   return { found: best.score >= 0.5, score: best.score, matched: best.entry };
 }
 
-/** 扫描助手消息，找出 KB 中无对应实现的断言（疑似幻觉） */
-export function detectHallucinations(facts: FactEntry[], messages: ScanMessage[], limit = 40): HallucinationItem[] {
+/** 扫描助手消息，找出 KB 中无对应实现的断言（疑似幻觉）；一条消息可产出多条断言 */
+export function detectHallucinations(facts: FactEntry[], messages: ScanMessage[], limit = 60): HallucinationItem[] {
   const out: HallucinationItem[] = [];
   for (const msg of messages) {
     if (msg.role !== 'assistant') continue;
     if (!hasAssertion(msg.text)) continue;
-    const claim = extractClaim(msg.text);
-    if (!claim) continue;
-    const chk = checkClaim(facts, claim);
-    if (chk.found) continue;
-    const idx = msg.text.indexOf(claim);
-    out.push({
-      claim,
-      score: chk.score,
-      sample: msg.text.slice(Math.max(0, idx - 28), idx + claim.length + 40),
-    });
-    if (out.length >= limit) break;
+    for (const claim of extractAllClaims(msg.text)) {
+      const chk = checkClaim(facts, claim);
+      if (chk.found) continue;
+      const idx = msg.text.indexOf(claim);
+      out.push({
+        claim,
+        score: chk.score,
+        sample: msg.text.slice(Math.max(0, idx - 28), idx + claim.length + 40),
+      });
+      if (out.length >= limit) return out;
+    }
   }
   return out;
 }

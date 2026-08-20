@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { rpc } from '../../shared/rpc';
 import type { FactEntry, FactKind, HallucinationItem } from '../../plugins/project-facts/types';
 import type { ScanMessage } from '../../plugins/project-facts/types';
+import { detectHallucinations, messagesFromText } from '../../plugins/project-facts/kb';
 
 const KINDS: FactKind[] = ['已实现', '决策', '架构', '待办', '限制'];
 
@@ -26,6 +27,8 @@ export function GroundingPanel() {
   const [brief, setBrief] = useState('');
   const [scan, setScan] = useState<ScanResp | null>(null);
   const [scanning, setScanning] = useState(false);
+  const [pasted, setPasted] = useState('');
+  const [pasteOut, setPasteOut] = useState<HallucinationItem[] | null>(null);
   const [localUrl, setLocalUrl] = useState('http://127.0.0.1:8787/facts.json');
   const [syncing, setSyncing] = useState(false);
   const [msg, setMsg] = useState('');
@@ -107,7 +110,8 @@ export function GroundingPanel() {
     try {
       const r = await rpc<{ tabId: number }, ScanResp>('plugin:project-facts', 'scan', { tabId: t.id });
       setScan(r);
-      setMsg(r.supported ? `扫描 ${r.messages.length} 条消息，发现疑似幻觉 ${r.flagged.length} 条（KB ${r.factsCount} 条）` : '当前站点不受支持');
+      const sparse = r.messages.length < 8 ? '（消息偏少：分享页可能懒加载，滚动到底后重扫，或确认页面已加载完）' : '';
+      setMsg(r.supported ? `扫描 ${r.messages.length} 条消息，发现疑似幻觉 ${r.flagged.length} 条（KB ${r.factsCount} 条）${sparse}` : '当前站点不受支持');
     } catch (e) {
       setErr(String(e));
     } finally {
@@ -132,6 +136,14 @@ export function GroundingPanel() {
     } finally {
       setSyncing(false);
     }
+  };
+
+  const checkPasted = () => {
+    if (!pasted.trim()) return;
+    const msgs = messagesFromText(pasted);
+    const flagged = detectHallucinations(facts, msgs);
+    setPasteOut(flagged);
+    setMsg(`粘贴文本 ${msgs.length} 段，发现疑似幻觉 ${flagged.length} 条`);
   };
 
   const shown = facts.filter((f) => filter === '全部' || f.kind === filter);
@@ -179,6 +191,28 @@ export function GroundingPanel() {
             {syncing ? '同步中…' : '从本地同步'}
           </button>
         </div>
+      </div>
+
+      <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div className="muted">粘贴会话转写检测（DOM 无关兜底：直接把你收到的 AI 回复文本贴进来）</div>
+        <textarea rows={5} value={pasted} onChange={(e) => setPasted(e.target.value)} placeholder={'把 AI 的消息（可含多条，空行分隔）粘贴到这里…'} style={{ fontSize: 11 }} />
+        <button onClick={checkPasted}>检测粘贴文本</button>
+        {pasteOut && (
+          <div>
+            {pasteOut.length ? (
+              pasteOut.map((it, i) => (
+                <div key={i} className="err" style={{ fontSize: 12, border: '1px solid #f0c6c9', borderRadius: 6, padding: 6, marginTop: 4 }}>
+                  ⚠ 「{it.claim}」（匹配度 {it.score.toFixed(2)}）
+                  <button style={{ marginLeft: 6 }} onClick={() => void copy(`请先核对：你提到的「${it.claim}」目前在项目里尚未实现（ai-edge 事实锚）。请按真实状态重新说明。`)}>
+                    复制澄清
+                  </button>
+                </div>
+              ))
+            ) : (
+              <div className="muted">未发现与 KB 冲突的“已完成”断言。</div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
