@@ -1,4 +1,4 @@
-/** stage: 优缺点 */
+/** stage: 优缺点（结构化输出 + 校验规范化） */
 import type { Stage, StageContext } from '../../../core/pipeline/pipeline';
 import type { AIProvider } from '../../../core/ai/provider';
 import { parseJsonLoose } from '../../../shared/protocol';
@@ -21,7 +21,13 @@ export class ProsConsStage implements Stage<SummaryFlow, SummaryFlow> {
       ],
       { model: this.model, temperature: 0.3, signal: ctx.signal },
     );
-    const prosCons = parseJsonLoose<ProsConsOutput>(res.text, { pros: [], cons: [] });
+    const raw = parseJsonLoose<ProsConsOutput>(res.text, { pros: [], cons: [] });
+    const strings = (arr: unknown): string[] =>
+      (Array.isArray(arr) ? arr.map((x) => String(x ?? '')) : []).slice(0, 12);
+    const prosCons: ProsConsOutput = {
+      pros: strings(raw?.pros).filter(Boolean),
+      cons: strings(raw?.cons).filter(Boolean),
+    };
     return { ...flow, prosCons };
   }
 }

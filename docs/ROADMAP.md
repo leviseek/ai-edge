@@ -25,14 +25,14 @@
 
 **验收**：`npm run typecheck` 零错误；`npm run build` 产出 dist；`npm run smoke:summary` 全绿；真实 LLM 链路建议在 Edge 加载后用 Side Panel 对长文/产品页/教程页分别冒烟。
 
-## M3 — 增强模式完善
+## M3 — 增强模式完善 ✅
 
-- `feasibility` / `pros-cons` 阶段 UI 化、结构化校验。
-- `compare` 深度化：搜索候选 Top N → 深抓内容（SW 侧 fetch + 再次提取）→ 综合对比表（含来源链接）。
-- **Fallback 链**：`activeProviderId` 失败/限流 → `fallbackChain` 自动切换，UI 提示实际所用模型。
-- **流式**：chatStream 经 Port 通道实时渲染总结文本。
+- [x] `feasibility` / `pros-cons` 结构化校验：输出规范化（字段截断/数组过滤/降级兜底）。
+- [x] `compare` 深度化：搜索候选 Top N → **SW 侧深抓**（`html-extractor` 无 DOM 提取正文，多页并行容错）→ LLM 综合对比表（含来源链接，深抓失败自动降级 snippet）。
+- [x] **Fallback 链**：`activeProviderId` 失败/限流（provider 类错误）→ `fallbackChain` 自动切换；`FallbackChainProvider` 记录按序尝试链，meta 携带 `usedFallback`/`fallbackChain`，UI 显示「自动降级」徽标；非提供商错误（解析/取消）不降级。
+- [x] **流式**：`chrome.runtime.connect` Port 通道 `ai-summary-stream` 实时推送 token/进度/结果/错误；Side Panel 实时渲染摘要文本（含看门狗自动回退 RPC）；SSE 块内回传 `model` 保证流式也可追溯模型。
 
-**验收**：一条命令式交互对任意产品页产出「可行性 + 优缺点 + 同品类对比」三合一报告，来源可点、模型可追溯。
+**验收**：`npm run typecheck` 零错误；`npm run build` 通过；`npm run smoke:m3` 全绿（HTML 深抓提取 / fallback 降级与非降级路径 / 单提供商包装）；`npm run smoke:summary` 仍全绿。真机链路建议在 Edge 中对产品页启用四模式跑通三合一报告并核对来源可点、模型可追溯。
 
 ## M4 — 体验与可信度打磨
 

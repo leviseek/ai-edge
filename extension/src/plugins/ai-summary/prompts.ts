@@ -1,7 +1,6 @@
 /** ai-summary 插件：提示词 */
 import type { ExtractionResult } from '../../core/extract/extractor';
-import type { ClassifyOutput } from './types';
-import type { SearchResult } from '../../core/search/service';
+import type { ClassifyOutput, CompareCandidate } from './types';
 
 export const SYSTEM_PROMPT =
   '你是一位严谨的 AI 研究助理。回答使用简体中文，除非原文明确要求其他语言。' +
@@ -93,23 +92,30 @@ export function mergeSummaryPrompt(
 export function comparePrompt(
   extract: ExtractionResult,
   classify: ClassifyOutput | undefined,
-  results: SearchResult[],
+  candidates: CompareCandidate[],
 ): string {
-  const lines = results
-    .map((r, i) => `${i + 1}. [${r.title}](${r.url}) ${(r.snippet || '').slice(0, 300)}`)
+  const lines = candidates
+    .map((c, i) => {
+      const head = `${i + 1}. [${c.title}](${c.url})`;
+      const snippet = (c.snippet || '').slice(0, 220);
+      const deep = (c.content || '').trim();
+      const deepPart = deep ? `  正文节选：${deep.slice(0, 420)}` : c.snippet ? '' : '  （未能抓取正文）';
+      return deepPart ? `${head} ${snippet}\n${deepPart}` : `${head} ${snippet}`;
+    })
     .join('\n');
   return [
-    '你要做“同品类横向比较”。当前页面主体见下，另附网络搜索结果作为候选。',
+    '你要做“同品类横向比较”。当前页面主体见下，另附网络搜索结果（部分候选已深抓正文）作为依据。',
     '输出严格 JSON：',
     '{"entity": "被比较主体", "category": "品类", "items": [{"name": "候选名称", "url": "来源URL", "summary": "一句话简介", "pros": ["优点"], "cons": ["缺点"], "suitableFor": "适合谁/什么场景"}], "recommendation": "客观建议"}',
-    'items 应包含当前页主体 + 搜索结果中 2-6 个同类候选；没有把握的候选标注来源链接；不要编造搜索结果中没有的信息。',
+    'items 应包含当前页主体 + 搜索结果中 2-6 个同类候选；优缺点必须来自候选正文/snippet，不得编造；来源 URL 保持原样。',
+    '未被深抓/正文为空的候选，优缺点可标注“信息有限”并主要依据 snippet。',
     '',
     `当前页主体：${classify?.entity ?? '未知'}（品类：${classify?.category ?? '未知'}）`,
     `标题：${extract.title}`,
-    '正文背景（截断）：',
+    '当前页正文背景（截断）：',
     extract.text.slice(0, 3000),
     '',
-    '网络搜索结果：',
+    '候选信息：',
     lines || '（无搜索结果，仅基于页面自身分析）',
   ].join('\n');
 }

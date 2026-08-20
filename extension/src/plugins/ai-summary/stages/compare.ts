@@ -1,18 +1,25 @@
-/** stage: 同品类横向比较（网络搜索召回 → LLM 综合） */
+/** stage: 同品类横向比较（搜索召回 → SW 深抓候选正文 → LLM 综合） */
 import type { Stage, StageContext } from '../../../core/pipeline/pipeline';
 import type { AIProvider } from '../../../core/ai/provider';
 import type { SearchServiceRegistry } from '../../../core/search/registry';
 import type { SearchResult } from '../../../core/search/service';
+import { extractTextFromHtml } from '../../../core/extract/html-extractor';
 import { EdgeError, ErrorCodes } from '../../../base/errors';
 import { parseJsonLoose } from '../../../shared/protocol';
 import { SYSTEM_PROMPT, comparePrompt } from '../prompts';
-import type { SummaryFlow, ComparisonOutput } from '../types';
+import type { SummaryFlow, ComparisonOutput, CompareCandidate } from '../types';
 
 export interface CompareOptions {
   /** 每个查询召回条数 */
   limit?: number;
   /** 最多执行几次搜索查询 */
   maxQueries?: number;
+  /** 深抓候选数量（0 表示不深抓） */
+  deepFetch?: number;
+  /** 深抓正文保留字符上限 */
+  deepFetchMaxChars?: number;
+  /** 深抓单页超时 ms */
+  deepFetchTimeoutMs?: number;
 }
 
 export class CompareStage implements Stage<SummaryFlow, SummaryFlow> {
@@ -30,6 +37,7 @@ export class CompareStage implements Stage<SummaryFlow, SummaryFlow> {
     const classify = flow.classify;
     const queries = this.buildQueries(classify?.entity, classify?.keywords ?? []);
 
+    // 1) 搜索召回
     const results: SearchResult[] = [];
     const seen = new Set<string>();
     for (const q of queries.slice(0, this.opts.maxQueries ?? 2)) {
@@ -48,13 +56,36 @@ export class CompareStage implements Stage<SummaryFlow, SummaryFlow> {
         ctx.log.warn('搜索失败', q, e);
       }
     }
-    ctx.emit(this.name, `搜索召回 ${results.length} 条候选`);
-    if (!results.length) ctx.log.warn('无搜索结果，compare 将基于页面自身分析');
+    const candidates: CompareCandidate[] = results.map((r) => ({ ...r }));
+    ctx.emit(this.name, `搜索召回 ${candidates.length} 条候选`);
 
+    // 2) SW 深抓候选正文（失败静默降级为 snippet）
+    const deepFetch = this.opts.deepFetch ?? 3;
+    const maxChars = this.opts.deepFetchMaxChars ?? 6000;
+    for (const c of candidates.slice(0, deepFetch)) {
+      if (ctx.signal.aborted) throw new EdgeError(ErrorCodes.CANCELED, '搜索已中止');
+      try {
+        const html = await fetchPageText(c.url, {
+          timeoutMs: this.opts.deepFetchTimeoutMs ?? 8000,
+          signal: ctx.signal,
+        });
+        const ex = extractTextFromHtml(html, c.url);
+        c.content = ex.text.slice(0, maxChars);
+        c.title = ex.title || c.title;
+        ctx.emit(this.name, `已深抓候选：${(c.title || c.url).slice(0, 28)}`);
+      } catch (e) {
+        ctx.log.warn('深抓失败', c.url, e);
+        c.content = '';
+      }
+    }
+    const deepCount = candidates.filter((c) => c.content).length;
+    ctx.emit(this.name, deepCount > 0 ? `深抓成功 ${deepCount} 个候选，开始综合` : '候选深抓均失败，将基于 snippet 综合');
+
+    // 3) LLM 综合对比表
     const res = await this.ai.chat(
       [
         { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: comparePrompt(flow.extract, classify, results.slice(0, (this.opts.limit ?? 5) * 3)) },
+        { role: 'user', content: comparePrompt(flow.extract, classify, candidates.slice(0, (this.opts.limit ?? 5) * 3)) },
       ],
       { model: this.model, temperature: 0.3, signal: ctx.signal },
     );
@@ -79,4 +110,29 @@ export class CompareStage implements Stage<SummaryFlow, SummaryFlow> {
     }
     return queries.length ? queries : ['当前页面产品 同类 对比'];
   }
+}
+
+async function fetchPageText(
+  url: string,
+  opts: { timeoutMs: number; signal: AbortSignal; maxBytes?: number },
+): Promise<string> {
+  let u: URL;
+  try {
+    u = new URL(url);
+  } catch {
+    throw new Error('无效 URL');
+  }
+  if (!/^https?:$/.test(u.protocol)) throw new Error('仅支持 http/https');
+
+  const timeout = AbortSignal.timeout(opts.timeoutMs);
+  const signal = AbortSignal.any ? AbortSignal.any([opts.signal, timeout]) : opts.signal;
+  const res = await fetch(url, {
+    signal,
+    redirect: 'follow',
+    headers: { 'user-agent': 'Mozilla/5.0 (compatible; ai-edge-summary/0.1)' },
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const buf = await res.arrayBuffer();
+  const bytes = buf.slice(0, opts.maxBytes ?? 300_000);
+  return new TextDecoder('utf-8', { fatal: false }).decode(bytes);
 }

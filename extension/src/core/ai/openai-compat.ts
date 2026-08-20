@@ -141,9 +141,9 @@ export class OpenAICompatProvider implements AIProvider {
           return;
         }
         try {
-          const chunk = JSON.parse(payload) as { choices?: { delta?: { content?: string } }[] };
+          const chunk = JSON.parse(payload) as { choices?: { delta?: { content?: string } }[]; model?: string };
           const delta = chunk.choices?.[0]?.delta?.content ?? '';
-          if (delta) yield { delta };
+          if (delta || chunk.model) yield { delta, model: chunk.model };
         } catch {
           /* 忽略畸形 SSE 行 */
         }

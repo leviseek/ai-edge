@@ -13,6 +13,10 @@ export interface SummaryMeta {
   durationMs: number;
   url: string;
   title: string;
+  /** 是否发生过提供商降级（fallback 链命中非首选） */
+  usedFallback?: boolean;
+  /** 实际按序调用的提供商 id */
+  fallbackChain?: string[];
 }
 
 export interface SummaryCore {
@@ -82,7 +86,14 @@ export interface ClassifyOutput {
   keywords: string[];
 }
 
-export interface SummaryFlow {
+/** compare 候选：搜索结果 + 可选深抓正文 */
+export interface CompareCandidate {
+  title: string;
+  url: string;
+  snippet: string;
+  /** SW 深抓到的正文（可能为空串表示抓取失败） */
+  content?: string;
+}export interface SummaryFlow {
   extract: import('../../core/extract/extractor').ExtractionResult & { text: string };
   model: string;
   classify?: ClassifyOutput;

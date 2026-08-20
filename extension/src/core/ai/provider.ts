@@ -26,6 +26,8 @@ export interface ChatResult {
 export interface ChatChunk {
   delta: string;
   done?: boolean;
+  /** 命中的模型（SSE 可含于首块） */
+  model?: string;
   usage?: Usage;
 }
 

@@ -1,6 +1,6 @@
-/** UI：Side Panel —— 增强总结主舞台（模式选择 → 进度 → 结果） */
+/** UI：Side Panel —— 增强总结主舞台（流式实时渲染 + 进度条 + 结构化结果） */
 import { createRoot } from 'react-dom/client';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { SummaryOutput, SummaryMode, ProgressEvent } from '../../plugins/ai-summary/export';
 import { api, activeTabId, onEvent } from '../shared/api';
 import { buildMarkdown, buildJson, copyToClipboard } from '../shared/result';
@@ -9,7 +9,7 @@ const MODES: { id: SummaryMode; label: string; hint: string }[] = [
   { id: 'summary', label: '核心摘要', hint: '执行摘要 + 要点 + 结论（长文自动分段）' },
   { id: 'feasibility', label: '可行性', hint: '技术/成本/风险/工作量' },
   { id: 'pros-cons', label: '优缺点', hint: '结构化优缺点' },
-  { id: 'compare', label: '同品类比较', hint: '网络搜索横向对比' },
+  { id: 'compare', label: '同品类比较', hint: '网络搜索 + 候选深抓横向对比' },
 ];
 
 interface ProviderStatus {
@@ -20,17 +20,27 @@ interface ProviderStatus {
   latencyMs?: number;
 }
 
+interface StreamMsg {
+  type?: string;
+  delta?: string;
+  ev?: ProgressEvent;
+  result?: SummaryOutput;
+  message?: string;
+}
+
 function App() {
   const [modes, setModes] = useState<SummaryMode[]>(['summary']);
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<ProgressEvent[]>([]);
+  const [streamText, setStreamText] = useState('');
   const [result, setResult] = useState<SummaryOutput | null>(null);
   const [err, setErr] = useState('');
   const [copied, setCopied] = useState('');
   const [provider, setProvider] = useState<ProviderStatus | null>(null);
   const [providerChecking, setProviderChecking] = useState(true);
+  const busyRef = useRef(false);
 
-  // 订阅进度事件
+  // RPC 路径的全局进度广播（仅 fallback 时用）
   useEffect(() => {
     const off = onEvent('plugin:ai-summary:progress', (data) => {
       const ev = data as ProgressEvent;
@@ -49,13 +59,7 @@ function App() {
         const label = ping.providers.find((p) => p.id === pid)?.label ?? pid;
         const h = await api.healthCheckProvider(pid);
         if (!alive) return;
-        setProvider({
-          label,
-          model: h.model ?? '',
-          ok: h.ok,
-          message: h.message ?? '',
-          latencyMs: h.latencyMs,
-        });
+        setProvider({ label, model: h.model ?? '', ok: h.ok, message: h.message ?? '', latencyMs: h.latencyMs });
       } catch (e) {
         if (alive) setProvider({ label: '？', model: '', ok: false, message: String(e) });
       } finally {
@@ -85,22 +89,97 @@ function App() {
     setModes((cur) => (cur.includes(m) ? cur.filter((x) => x !== m) : [...cur, m]));
   };
 
+  const finishRun = () => {
+    busyRef.current = false;
+    setBusy(false);
+  };
+
   const run = async () => {
     const tabId = await activeTabId();
     if (!tabId) return setErr('未找到活动标签页');
     if (!modes.length) return setErr('请至少选择一个模式');
+    if (busyRef.current) return;
+    busyRef.current = true;
     setBusy(true);
     setErr('');
     setProgress([]);
+    setStreamText('');
     setResult(null);
+
+    const request = { tabId, modes };
+    let finished = false;
+    const done = () => {
+      if (finished) return;
+      finished = true;
+      finishRun();
+    };
+
+    let port: chrome.runtime.Port | null = null;
     try {
-      const res = await api.summarize(tabId, modes);
-      setResult(res);
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
-    } finally {
-      setBusy(false);
+      port = chrome.runtime.connect({ name: 'ai-summary-stream' });
+    } catch {
+      port = null;
     }
+    let watchdog: ReturnType<typeof setTimeout> | null = null;
+    const clearWatchdog = () => {
+      if (watchdog) {
+        clearTimeout(watchdog);
+        watchdog = null;
+      }
+    };
+    const cleanupPort = () => {
+      clearWatchdog();
+      try {
+        port?.disconnect();
+      } catch {
+        /* noop */
+      }
+    };
+    const rpcRun = (): Promise<void> => {
+      clearWatchdog();
+      return api
+        .summarize(tabId, modes)
+        .then((res) => {
+          setResult(res);
+        })
+        .catch((e) => setErr(e instanceof Error ? e.message : String(e)))
+        .finally(done);
+    };
+
+    if (!port) {
+      void rpcRun();
+      return;
+    }
+
+    watchdog = setTimeout(() => {
+      // 插件未激活/通道异常：回退 RPC
+      port?.disconnect();
+      void rpcRun();
+    }, 3000);
+
+    port.onMessage.addListener((msg: StreamMsg) => {
+      clearWatchdog();
+      if (msg.type === 'token') {
+        setStreamText((s) => s + (msg.delta ?? ''));
+      } else if (msg.type === 'progress' && msg.ev) {
+        setProgress((p) => [...p, msg.ev as ProgressEvent]);
+      } else if (msg.type === 'result' && msg.result) {
+        setResult(msg.result);
+        cleanupPort();
+        done();
+      } else if (msg.type === 'error') {
+        setErr(msg.message ?? '流式生成失败');
+        cleanupPort();
+        done();
+      }
+    });
+    port.onDisconnect.addListener(() => {
+      if (!finished) {
+        // 未收到结果即断开：回退 RPC
+        void rpcRun();
+      }
+    });
+    port.postMessage({ type: 'start', request });
   };
 
   const copy = async (kind: 'md' | 'json') => {
@@ -160,6 +239,13 @@ function App() {
         </div>
       )}
 
+      {busy && streamText && (
+        <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <span className="muted">实时生成摘要（预览）…</span>
+          <p style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{streamText}<span className="cur">▌</span></p>
+        </div>
+      )}
+
       {err && (
         <div className="err">
           {err}
@@ -182,6 +268,7 @@ function App() {
             </div>
             <div className="muted">
               模型 {result.meta.providerLabel} / {result.meta.model} · {result.meta.durationMs}ms
+              {result.meta.usedFallback && <span className="badge" style={{ marginLeft: 6, background: '#fff3e0', color: '#b26a00' }}>自动降级</span>}
               {result.pageType ? ` · 页面类型：${result.pageType}` : ''}
             </div>
           </section>
@@ -249,7 +336,7 @@ function App() {
                 </div>
               ))}
               {result.comparison.recommendation && <p><strong>建议：</strong>{result.comparison.recommendation}</p>}
-              <p className="muted">信息来自搜索与页面分析，时效性请以来源为准。</p>
+              <p className="muted">信息来自搜索与候选深抓，时效性请以来源为准。</p>
             </section>
           )}
 
