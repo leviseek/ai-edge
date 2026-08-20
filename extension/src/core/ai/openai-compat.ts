@@ -32,6 +32,50 @@ export class OpenAICompatProvider implements AIProvider {
     return this.cfg.baseUrl.replace(/\/+$/, '');
   }
 
+  private hostIsLocal(): boolean {
+    try {
+      const host = new URL(this.cfg.baseUrl).hostname;
+      return /^(localhost|127\.0\.0\.1|0\.0\.0\.0|::1)$/.test(host);
+    } catch {
+      return false;
+    }
+  }
+
+  private async friendly(prefix: string, res: Response): Promise<never> {
+    let body = '';
+    try {
+      body = (await res.text()).slice(0, 200);
+    } catch {
+      /* 忽略 */
+    }
+    const code = ErrorCodes.PROVIDER;
+    if (res.status === 401 && !this.cfg.apiKey && !this.hostIsLocal()) {
+      throw new EdgeError(code, `「${this.label}」需要 API Key：请在设置页填写后再试（HTTP 401）`);
+    }
+    if (res.status === 401 || res.status === 403) {
+      throw new EdgeError(code, `「${this.label}」鉴权失败（HTTP ${res.status}）：请检查 API Key 是否正确${body ? `：${body}` : ''}`);
+    }
+    if (res.status === 429) {
+      throw new EdgeError(code, '请求过于频繁（HTTP 429 · 限流）——稍后重试，或可在设置页配置 fallback 提供商');
+    }
+    if (res.status >= 500) {
+      throw new EdgeError(code, `「${this.label}」服务端错误（HTTP ${res.status}）：请稍后再试`);
+    }
+    throw new EdgeError(code, `${prefix} HTTP ${res.status}${body ? `：${body}` : ''}`);
+  }
+
+  private async guardFetch(input: RequestInfo | URL, init: RequestInit): Promise<Response> {
+    try {
+      return await fetch(input, init);
+    } catch (e) {
+      if (e instanceof DOMException && e.name === 'AbortError') throw new EdgeError(ErrorCodes.CANCELED, '请求已取消');
+      throw new EdgeError(
+        ErrorCodes.PROVIDER,
+        `无法连接 ${this.cfg.baseUrl}（${this.hostIsLocal() ? '请确认本地服务已启动' : '请检查地址/网络'}）：${e instanceof Error ? e.message : String(e)}`,
+      );
+    }
+  }
+
   private headers(): Record<string, string> {
     const h: Record<string, string> = { 'Content-Type': 'application/json' };
     if (this.cfg.apiKey) h.Authorization = `Bearer ${this.cfg.apiKey}`;
@@ -50,13 +94,13 @@ export class OpenAICompatProvider implements AIProvider {
   }
 
   async chat(messages: ChatMessage[], opts: ChatOptions = {}): Promise<ChatResult> {
-    const res = await fetch(`${this.base()}/chat/completions`, {
+    const res = await this.guardFetch(`${this.base()}/chat/completions`, {
       method: 'POST',
       headers: this.headers(),
       body: JSON.stringify(this.body(messages, opts, false)),
       signal: opts.signal,
     });
-    if (!res.ok) throw new EdgeError(ErrorCodes.PROVIDER, `AI 请求失败 HTTP ${res.status}: ${await this.safeText(res)}`);
+    if (!res.ok) await this.friendly('AI 请求失败', res);
     const data = (await res.json()) as {
       choices?: { message?: { content?: string } }[];
       usage?: Usage;
@@ -71,13 +115,13 @@ export class OpenAICompatProvider implements AIProvider {
   }
 
   async *chatStream(messages: ChatMessage[], opts: ChatOptions = {}): AsyncIterable<ChatChunk> {
-    const res = await fetch(`${this.base()}/chat/completions`, {
+    const res = await this.guardFetch(`${this.base()}/chat/completions`, {
       method: 'POST',
       headers: this.headers(),
       body: JSON.stringify(this.body(messages, opts, true)),
       signal: opts.signal,
     });
-    if (!res.ok) throw new EdgeError(ErrorCodes.PROVIDER, `AI 请求失败 HTTP ${res.status}: ${await this.safeText(res)}`);
+    if (!res.ok) await this.friendly('AI 请求失败', res);
     if (!res.body) throw new EdgeError(ErrorCodes.PROVIDER, 'AI 响应无 body');
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
@@ -130,14 +174,6 @@ export class OpenAICompatProvider implements AIProvider {
       };
     } catch (e) {
       return { ok: false, latencyMs: Date.now() - t0, message: e instanceof Error ? e.message : String(e) };
-    }
-  }
-
-  private async safeText(res: Response): Promise<string> {
-    try {
-      return (await res.text()).slice(0, 300);
-    } catch {
-      return '';
     }
   }
 }

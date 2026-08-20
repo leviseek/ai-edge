@@ -1,6 +1,7 @@
 # 依赖与构建产物
 node_modules/
 dist/
+.smoke/
 *.tgz
 
 # pnpm 封装产物（本工程以 npm 为准，pnpm 文件为环境无意生成）

@@ -53,6 +53,23 @@ body {
   background: var(--accent-weak);
   color: var(--accent);
 }
+.statusbar .badge.ok { background: #e6f7ee; color: var(--ok); }
+.statusbar .badge.bad { background: #fdecec; color: var(--danger); }
+
+/* 进度条 */
+.progress-wrap {
+  background: #e7ecf2;
+  border-radius: 999px;
+  height: 8px;
+  overflow: hidden;
+  margin: 4px 0 6px;
+}
+.progress-fill {
+  background: var(--accent);
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.35s ease;
+}
 
 button {
   border: 1px solid var(--border);

@@ -13,9 +13,13 @@ function App() {
 
   useEffect(() => {
     void Promise.all([api.getSettings(), api.ping()])
-      .then(([s, p]) => {
+      .then(async ([s, p]) => {
         setSettings(structuredClone(s));
         setPing(p);
+        // 自动冒烟：加载即检查默认提供商
+        const pid = p.activeProviderId;
+        const h = await api.healthCheckProvider(pid);
+        setHealth((m) => ({ ...m, [pid]: h }));
       })
       .catch((e) => setErr(String(e)));
   }, []);
@@ -76,6 +80,27 @@ function App() {
   return (
     <div className="opt-root">
       <h1>ai-edge 设置</h1>
+
+      {ping && health[ping.activeProviderId] && (
+        <div
+          className="panel"
+          style={{ borderLeft: `4px solid ${health[ping.activeProviderId].ok ? 'var(--ok)' : 'var(--danger)'}` }}
+        >
+          <div className="row">
+            <span className="grow">
+              <strong>{ping.providers.find((p) => p.id === ping.activeProviderId)?.label ?? ping.activeProviderId}</strong>{' '}
+              <span className={health[ping.activeProviderId].ok ? 'ok' : 'err'}>
+                {health[ping.activeProviderId].ok ? '✓ 已连接' : '✗ 未连接'}
+              </span>
+            </span>
+            <span className="muted">
+              {health[ping.activeProviderId].model ? `${health[ping.activeProviderId].model} · ` : ''}
+              {health[ping.activeProviderId].latencyMs !== undefined ? `${health[ping.activeProviderId].latencyMs}ms` : ''}
+            </span>
+          </div>
+          <div className="muted" style={{ marginTop: 4 }}>{health[ping.activeProviderId].message}</div>
+        </div>
+      )}
 
       <div className="panel">
         <h2>AI 提供商</h2>

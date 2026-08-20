@@ -66,7 +66,12 @@ export interface ProgressEvent {
   runId: string;
   stage: string;
   message: string;
+  /** 本阶段内部进度 0..1（整体 = (step + progress)/steps） */
   progress?: number;
+  /** 阶段序号（0-based） */
+  step?: number;
+  /** 阶段总数 */
+  steps?: number;
 }
 
 /** 流水线中间态 */

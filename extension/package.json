@@ -7,7 +7,8 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "dev": "node scripts/build.mjs --watch",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "smoke:summary": "esbuild scripts/m2-smoke.ts --bundle --platform=node --format=esm --outfile=.smoke/smoke.mjs && node .smoke/smoke.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",

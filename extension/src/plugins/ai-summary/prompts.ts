@@ -57,6 +57,39 @@ export function prosConsPrompt(extract: ExtractionResult): string {
   ].join('\n');
 }
 
+export function perChunkSummaryPrompt(chunk: string, chunkIndex: number, total: number): string {
+  return [
+    `这是某篇长文被切分后的第 ${chunkIndex + 1}/${total} 段。请概括本段的核心内容要点，输出严格 JSON：`,
+    '{"summary": "本段不超过180字的中文概括"}',
+    '只依据本段信息，不臆测、不补全未出现的内容。',
+    '',
+    '本段正文：',
+    chunk,
+  ].join('\n');
+}
+
+export function mergeSummaryPrompt(
+  parts: string[],
+  classify: ClassifyOutput | undefined,
+  meta: { title: string; url: string; truncated: boolean },
+): string {
+  const metaLine = `页面类型：${classify?.pageType ?? '未知'}\n主体：${classify?.entity ?? '-'}\n品类：${classify?.category ?? '-'}`;
+  const joined = parts.map((p, i) => `【段 ${i + 1}】${p}`).join('\n');
+  return [
+    '你是总结合成器。下面是一篇长文被切分后，逐段分别概括得到的“分段摘要”列表。',
+    '请综合这些分段摘要，输出整篇文章的最终总结，严格 JSON：',
+    '{"executiveSummary": "140字以内的执行摘要", "keyPoints": ["3-6条要点，每条不超过40字"], "verdict": "一句话结论/价值判断"}',
+    '',
+    metaLine,
+    `标题：${meta.title}`,
+    `URL：${meta.url}`,
+    meta.truncated ? '注意：原文过长，以下仅覆盖被总结到的分段（信息存在截断，请如实体现）。' : '',
+    '',
+    '分段摘要列表：',
+    joined,
+  ].join('\n');
+}
+
 export function comparePrompt(
   extract: ExtractionResult,
   classify: ClassifyOutput | undefined,

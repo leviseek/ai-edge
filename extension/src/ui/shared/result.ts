@@ -74,6 +74,10 @@ export function buildMarkdown(r: SummaryOutput): string {
   return lines.join('\n');
 }
 
+export function buildJson(r: SummaryOutput): string {
+  return JSON.stringify(r, null, 2);
+}
+
 export function copyToClipboard(text: string): Promise<void> {
   return navigator.clipboard.writeText(text);
 }

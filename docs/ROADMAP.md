@@ -14,14 +14,16 @@
 
 **验收**：`npm run typecheck` 零错误；`npm run build` 产出 dist；Edge 加载不报错；配置自托管 Ollama（或 DeepSeek Key）后可在 Side Panel 对任意页面跑通总结。
 
-## M2 — 总结全流程打通
+## M2 — 总结全流程打通 ✅
 
-- 无 Key 冒烟路径：默认 provider 指向 `http://localhost:11434/v1`（Ollama），healthCheck 一键确认。
-- 长文多 chunk 摘要（分段摘要 + 合并）。
-- 结果页结构化展示 + 复制 Markdown / JSON。
-- 运行期进度事件串联（进度条 + 阶段状态）。
+- [x] 无 Key 冒烟路径：默认 provider 指向 `http://localhost:11434/v1`（Ollama）；healthCheck 一键确认（Side Panel 顶部连接徽标 + Options 加载即自动检查）。
+- [x] 长文多 chunk 摘要（分段摘要 + 合并；`chunkText` 修复尾部死循环，超长文按 `maxChunks=24` 截断并如实标注）。
+- [x] 结果页结构化展示 + 复制 Markdown / JSON。
+- [x] 运行期进度事件串联：流水线事件携带 `step/steps`，Side Panel 进度条与阶段状态实时刷新。
+- [x] 可读错误：缺 Key / 鉴权失败 / 限流 / 连接失败均有中文说明，并提供「去设置页配置」引导。
+- [x] 核心逻辑经 mock provider 冒烟验证：`npm run smoke:summary`（长文/短文/超长截断三场景）。
 
-**验收**：对长文/产品页/教程三类页面分别产出合格核心摘要；截断或 Key 错误时给出可读错误。
+**验收**：`npm run typecheck` 零错误；`npm run build` 产出 dist；`npm run smoke:summary` 全绿；真实 LLM 链路建议在 Edge 加载后用 Side Panel 对长文/产品页/教程页分别冒烟。
 
 ## M3 — 增强模式完善
 
