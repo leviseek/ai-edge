@@ -7,8 +7,20 @@ import { rpc, onEvent } from '../shared/rpc';
 import { buildMarkdown } from '../ui/shared/result';
 import type { SummaryOutput, SummaryMode, ProgressEvent } from '../plugins/ai-summary/export';
 import type { VideoInfo } from '../plugins/video-subtitle/types';
+import { hasAssertion, extractClaim, checkClaim, loadFacts, buildClarify } from '../plugins/project-facts/kb';
+import type { ScanMessage } from '../plugins/project-facts/types';
 
 const CONTENT_TARGET = 'content:main';
+/** 支持幻觉检测的 AI 站点 */
+const LLM_HOSTS = [
+  'chatgpt.com',
+  'chat.openai.com',
+  'claude.ai',
+  'gemini.google.com',
+  'chat.deepseek.com',
+  'kimi.moonshot.cn',
+  'tongyi.aliyun.com',
+];
 
 // 哨兵：TabMessenger 可能在页面加载后再注入一次 content.js（executeScript），
 // 重复副本不得再次注册监听/注入 UI，避免重复应答与重复 FAB。
@@ -53,6 +65,13 @@ function main(): void {
           sendResponse(errResponse(msg, toErrorCode(e), e instanceof Error ? e.message : String(e)));
         }
         return true;
+      case 'grounding-scan':
+        try {
+          sendResponse(okResponse(msg, groundingScan()));
+        } catch (e) {
+          sendResponse(errResponse(msg, toErrorCode(e), e instanceof Error ? e.message : String(e)));
+        }
+        return true;
       case 'ping':
         sendResponse(okResponse(msg, { ok: true }));
         return true;
@@ -62,9 +81,10 @@ function main(): void {
     }
   });
 
-  // 悬浮入口：仅顶层文档注入一次
+  // 悬浮入口 + 幻觉检测：仅顶层文档
   if (window.top === window) {
     initFloatingCard();
+    if (isLlmHost()) initHallucinationWatcher();
   }
 }
 
@@ -259,6 +279,85 @@ function utf8ToBase64(s: string): string {
   let bin = '';
   for (const b of bytes) bin += String.fromCharCode(b);
   return btoa(bin);
+}
+
+/** 收集当前 AI 会话消息（按站点选择器，尽力而为） */
+function collectMessages(): ScanMessage[] {
+  const out: ScanMessage[] = [];
+  const host = location.hostname;
+  try {
+    if (/chatgpt\.com|chat\.openai\.com/.test(host)) {
+      document.querySelectorAll('[data-message-author-role]').forEach((el) => {
+        const role = el.getAttribute('data-message-author-role') ?? '';
+        out.push({ role, text: (el as HTMLElement).innerText || '' });
+      });
+    } else if (/claude\.ai/.test(host)) {
+      document.body.querySelectorAll('.font-claude-message').forEach((el) => {
+        out.push({ role: 'assistant', text: (el as HTMLElement).textContent || '' });
+      });
+    } else if (/chat\.deepseek\.com/.test(host)) {
+      document.querySelectorAll('[class*="ds-markdown"], .ds-markdown').forEach((el) => {
+        out.push({ role: 'assistant', text: (el as HTMLElement).textContent || '' });
+      });
+    }
+  } catch {
+    /* 忽略 */
+  }
+  return out;
+}
+
+function groundingScan(): { host: string; supported: boolean; messages: ScanMessage[] } {
+  const supported = isLlmHost();
+  return { host: location.hostname, supported, messages: supported ? collectMessages() : [] };
+}
+
+function isLlmHost(): boolean {
+  return LLM_HOSTS.some((h) => location.hostname.includes(h));
+}
+
+/** 直播幻觉挂钩：轮询助手气泡，命中“未实现断言”则加 ⚠ 标记，点击复制澄清 */
+function initHallucinationWatcher(): void {
+  let kb: Awaited<ReturnType<typeof loadFacts>> = [];
+  const marked = new Set<HTMLElement>();
+  let ready = false;
+
+  void loadFacts().then((f) => {
+    kb = f;
+    ready = true;
+  });
+
+  const sweep = () => {
+    if (!ready || !kb.some((f) => f.kind === '已实现')) return;
+    const nodes = document.querySelectorAll('[data-message-author-role="assistant"] .markdown, .font-claude-message');
+    for (const el of nodes) {
+      const h = el as HTMLElement;
+      if (marked.has(h) || !h || h.dataset.aiEdgeChecked) continue;
+      h.dataset.aiEdgeChecked = '1';
+      const text = h.innerText || h.textContent || '';
+      if (!hasAssertion(text)) continue;
+      const claim = extractClaim(text);
+      if (!claim || checkClaim(kb, claim).found) continue;
+      marked.add(h);
+      let host = h;
+      if (!getComputedStyle(host).position || getComputedStyle(host).position === 'static') host.style.position = 'relative';
+      const btn = document.createElement('button');
+      btn.textContent = '⚠ 疑似幻觉';
+      btn.title = `${claim}\n点击复制「澄清请求」`;
+      btn.style.cssText =
+        'position:absolute;top:6px;right:6px;z-index:99999;background:#d33f49;color:#fff;border:none;border-radius:8px;padding:2px 8px;font:600 11px/1.6 sans-serif;cursor:pointer;opacity:.9;';
+      btn.onclick = () => {
+        void navigator.clipboard.writeText(buildClarify(claim)).catch(() => undefined);
+        btn.textContent = '已复制澄清 ✓';
+      };
+      h.appendChild(btn);
+    }
+    if (marked.size > 400) {
+      for (const m of [...marked].slice(0, 100)) m.dataset.aiEdgeChecked = '1';
+    }
+  };
+
+  setInterval(sweep, 1600);
+  sweep();
 }
 
 /** 为指定 <video> 注入原生字幕轨 */

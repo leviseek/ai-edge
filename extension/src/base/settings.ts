@@ -96,7 +96,7 @@ export const DEFAULT_SETTINGS: BaseSettings = {
     },
   },
   plugins: {
-    enabled: ['ai-summary', 'resource-downloader', 'video-subtitle'],
+    enabled: ['ai-summary', 'resource-downloader', 'video-subtitle', 'project-facts'],
   },
   ui: {
     theme: 'auto',

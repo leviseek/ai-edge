@@ -7,6 +7,7 @@ import { buildMarkdown, buildJson, copyToClipboard } from '../shared/result';
 import { renderMarkdown } from '../shared/markdown-render';
 import { ensureNetworkPermission } from '../shared/net-permission';
 import { ResourcePanel } from '../shared/ResourcePanel';
+import { GroundingPanel } from '../shared/GroundingPanel';
 
 const MODES: { id: SummaryMode; label: string; hint: string }[] = [
   { id: 'summary', label: '核心摘要', hint: '执行摘要 + 要点 + 结论（长文自动分段）' },
@@ -47,7 +48,7 @@ function App() {
   const [copied, setCopied] = useState('');
   const [hint, setHint] = useState('');
   const [viewMode, setViewMode] = useState<'structured' | 'md'>('structured');
-  const [section, setSection] = useState<'summary' | 'download'>('summary');
+  const [section, setSection] = useState<'summary' | 'download' | 'facts'>('summary');
   const [provider, setProvider] = useState<ProviderStatus | null>(null);
   const [providerChecking, setProviderChecking] = useState(true);
   const busyRef = useRef(false);
@@ -215,6 +216,7 @@ function App() {
         <span className="row">
           <button className={section === 'summary' ? 'primary' : ''} onClick={() => setSection('summary')}>AI 总结</button>
           <button className={section === 'download' ? 'primary' : ''} onClick={() => setSection('download')}>资源下载</button>
+          <button className={section === 'facts' ? 'primary' : ''} onClick={() => setSection('facts')}>项目事实</button>
         </span>
         {section === 'summary' && (providerChecking ? (
           <span className="muted">探测连接…</span>
@@ -227,6 +229,8 @@ function App() {
 
       {section === 'download' ? (
         <ResourcePanel />
+      ) : section === 'facts' ? (
+        <GroundingPanel />
       ) : (
         <>
       <div className="mode-row">

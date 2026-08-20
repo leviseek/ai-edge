@@ -17,6 +17,8 @@ import { RESOURCE_MANIFEST } from '../plugins/resource-downloader/manifest';
 import { createResourceDownloaderPlugin } from '../plugins/resource-downloader/index';
 import { SUBTITLE_MANIFEST } from '../plugins/video-subtitle/manifest';
 import { createVideoSubtitlePlugin } from '../plugins/video-subtitle/index';
+import { PROJECT_FACTS_MANIFEST } from '../plugins/project-facts/manifest';
+import { createProjectFactsPlugin } from '../plugins/project-facts/index';
 
 const log = new Logger('base');
 const settings = new SettingsStore();
@@ -60,6 +62,7 @@ async function init(): Promise<void> {
   registry.register(SUMMARY_MANIFEST, createAiSummaryPlugin);
   registry.register(RESOURCE_MANIFEST, createResourceDownloaderPlugin);
   registry.register(SUBTITLE_MANIFEST, createVideoSubtitlePlugin);
+  registry.register(PROJECT_FACTS_MANIFEST, createProjectFactsPlugin);
   await registry.activateAll(pluginCtx, settings.get().plugins.enabled);
 
   // 图标点击默认打开 Popup（default_popup）；侧栏经 Popup 按钮 / 页面 FAB 打开

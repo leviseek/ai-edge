@@ -55,6 +55,16 @@
 **验收（本轮）**：`npm run typecheck` 零错误；`npm run build` 通过（含 `offscreen.js`/`offscreen.html`）；`smoke:m5` 全绿，M2–M4 冒烟保持全绿。
 **真机建议**：① Popup→资源下载→扫描 B 站/任意页→分类/AI 筛选→下载选中；② 若配好 Whisper Key，`transcribe-uri` 对一段 mp3/m4a URL 验证转写（后续接页面捕获即得字幕）。
 
+## M6 — 项目事实锚（对抗 AI 会话幻觉）
+
+- [x] 事实知识库 KB：`已实现 / 决策 / 架构 / 待办 / 限制` 五类，chrome.storage.local 持久化；支持 JSON / Markdown 小节 / `[KIND]` 前缀导入。
+- [x] 会话锚定 Brief：一键把 KB 压缩为「以此为准」上下文（含防幻觉规则），复制粘贴进任意 AI 会话开头；会话变长/换会话重锚定。
+- [x] 幻觉检测：ChatGPT/Claude/DeepSeek/Kimi 等页面 content 扫描「已实现/已完成/当前版本…」断言 → 与 KB「已实现」比对（子串 + 标题分词命中）→ 疑似幻觉 ⚠ 挂标记，点击一键复制澄清话术；侧栏「扫描当前会话」出整段诊断报告。
+- [x] UI：Side Panel「项目事实」页签（增删改 / 导入 / Brief / 扫描）；后台注册且默认启用。
+- [x] 验证：`smoke:m6`（导入/Brief/断言提取/检出与澄清）全绿；typecheck 零错；build 通过。
+
+**真机建议**：把当前项目的「已实现 + 决策 + 待办」导入 KB → 下次用 ChatGPT 前先贴一次 Brief → 会话中遇到「你已经做了 X」直接点 ⚠ 复制澄清；长期使用可每周把实现进展同步进 KB。
+
 ## M6 — 分发与生态
 
 - 图标/商店素材、Edge Add-ons 审核材料（隐私政策、权限说明）。
